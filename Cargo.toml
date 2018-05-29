@@ -1,0 +1,8 @@
+[package]
+name = "disjoint-path-routing"
+version = "0.1.0"
+authors = ["Bram van den Heuvel <b.vandenheuvel@student.tudelft.nl>"]
+
+[dependencies]
+rand = "0.3"
+priority-queue = "0.5.1"
