@@ -10,7 +10,6 @@ pub trait Demand {
 
 #[derive(Copy, Clone)]
 pub struct Request {
-    pub id: u64,
     pub source: Vertex,
     pub terminal: Vertex,
 }
@@ -32,11 +31,11 @@ impl Demand for Uniform {
         let sources = plan.sources();
         let terminals = plan.terminals();
 
-        for id in 0..nr_requests {
+        for _ in 0..nr_requests {
             let source = *self.rng.choose(&sources).unwrap();
             let terminal = *self.rng.choose(&terminals).unwrap();
 
-            requests.push(Request { id, source, terminal, });
+            requests.push(Request { source, terminal, });
         }
 
         requests

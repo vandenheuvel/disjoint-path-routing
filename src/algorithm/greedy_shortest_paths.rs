@@ -8,6 +8,7 @@ use simulation::plan::Vertex;
 use simulation::demand::Request;
 use simulation::simulation::{MoveInstruction, PlacementInstruction};
 use simulation::simulation::RemovalInstruction;
+use std::collections::HashMap;
 
 pub struct GreedyShortestPaths<'p, 's> {
     // Initialized at instantiation
@@ -15,18 +16,18 @@ pub struct GreedyShortestPaths<'p, 's> {
     settings: &'s Settings,
 
     // After
-    /// One for each request
-    paths: Option<Vec<(bool, Path)>>,
+    /// One for each request => Path
+    paths: Option<HashMap<usize, Path>>,
 }
 
 impl<'p, 's> GreedyShortestPaths<'p, 's> {
-    fn calculate_paths(&mut self, requests: &Vec<Request>) {
-        let mut paths = Vec::with_capacity(requests.len());
+    fn calculate_paths(&mut self, requests: &HashMap<usize, Request>) {
+        let mut paths = HashMap::with_capacity(requests.len());
 
-        for request in requests {
-            let path = self.time_graph.find_earliest_path(request.source, request.terminal);
+        for (&id, &Request { source, terminal, }) in requests.into_iter() {
+            let path = self.time_graph.find_earliest_path(source, terminal);
             self.time_graph.remove_path(&path);
-            paths.push((false, path));
+            paths.insert(id, path);
         }
 
         self.paths = Some(paths);
@@ -57,35 +58,28 @@ impl<'p, 's> Algorithm<'p, 's> for GreedyShortestPaths<'p, 's> {
             let mut placements = Vec::new();
             let mut removals = Vec::new();
 
-            for robot_state in &state.robot_states {
-                match robot_state.parcel {
+            for (robot_id, robot_state) in state.robot_states.iter().enumerate() {
+                match robot_state.parcel_id {
                     Some(parcel) => {
                         match robot_state.vertex {
-                            Some(vertex) if vertex == parcel.terminal => removals.push(RemovalInstruction {
-                                robot: robot_state.robot,
-                                vertex,
-                                parcel,
-                            }),
+                            Some(vertex) if vertex == *paths.get(&parcel).unwrap().nodes.last().unwrap() =>
+                                removals.push(RemovalInstruction { robot_id, vertex, parcel, }),
                             Some(vertex) => {
-                                let (_, (start_time, nodes)) = &paths[parcel.id as usize];
+                                let &Path { started, start_time, nodes, } = &paths.get(&parcel).unwrap();
                                 let next = nodes[current_time - start_time];
-                                movements.push(MoveInstruction {
-                                    robot: robot_state.robot,
-                                    vertex,
-                                    parcel: Some(parcel),
-                                });
+                                movements.push(MoveInstruction { robot_id, vertex, parcel: Some(parcel), });
                             }
                             None => panic!("Should be placed if it has a parcel"),
                         }
                     },
                     None => {
                         let mut mark_started = None;
-                        for (parcel, &(started, (start_time, ref nodes))) in paths.iter().enumerate() {
-                            if start_time == current_time && !started {
+                        for (&parcel, Path { started, start_time, nodes, }) in paths.iter() {
+                            if *start_time == current_time && !started {
                                 placements.push(PlacementInstruction {
-                                    robot: robot_state.robot,
+                                    robot_id: robot_state.robot_id,
+                                    parcel,
                                     vertex: *nodes.first().unwrap(),
-                                    parcel: requests[parcel],
                                 });
                             }
 
@@ -93,7 +87,7 @@ impl<'p, 's> Algorithm<'p, 's> for GreedyShortestPaths<'p, 's> {
                             break;
                         }
                         if let Some(parcel) = mark_started {
-                            paths[parcel].0 = true;
+                            paths.get_mut(&parcel).unwrap().started = true;
                         }
                     },
                 }
@@ -104,4 +98,8 @@ impl<'p, 's> Algorithm<'p, 's> for GreedyShortestPaths<'p, 's> {
     }
 }
 
-pub type Path = (usize, Vec<Vertex>);
+pub struct Path {
+    pub started: bool,
+    pub start_time: usize,
+    pub nodes: Vec<Vertex>
+}

@@ -10,7 +10,7 @@ use std::collections::HashMap;
 pub struct TimeGraph<'a> {
     plan: &'a Plan,
     vertices: Vec<HashSet<Vertex>>,
-    pub total_time: usize,
+    total_time: usize,
 }
 
 impl<'a> TimeGraph<'a> {
@@ -36,7 +36,7 @@ impl<'a> TimeGraph<'a> {
 
         let mut came_from = HashMap::new();
         let mut visited = HashSet::new();
-        let mut to_visit = PriorityQueue::new(); // fscore
+        let mut to_visit = PriorityQueue::new();
         to_visit.push((start_time, from), TimeGraph::distance(from, to));
 
         let mut distances = HashMap::new();
@@ -72,18 +72,19 @@ impl<'a> TimeGraph<'a> {
         nodes.push(previous_vertex);
         let mut time = previous_time;
 
-        while let Some(&(previous_time, previous_vertex)) = came_from.get(&(time, *nodes.last().unwrap())) {
+        while let Some(&(_, previous_vertex)) = came_from.get(&(time, *nodes.last().unwrap())) {
             time -= 1;
             nodes.push(previous_vertex);
         }
         nodes.reverse();
 
-        (time.into(), nodes)
+        Path { started: false, start_time: time, nodes, }
     }
     fn distance(first: Vertex, second: Vertex) -> u64 {
         u64::max_value() - first.distance(second)
     }
-    pub fn remove_path(&mut self, (start_time, nodes): &Path) {
+    pub fn remove_path(&mut self, path: &Path) {
+        let Path { started, start_time, nodes, } = path;
         for (index, node) in nodes.iter().enumerate() {
             self.vertices[start_time + index].remove(node);
             self.vertices[start_time + index + 1].remove(node);
@@ -100,3 +101,22 @@ impl<'a> TimeGraph<'a> {
 }
 
 type TimeVertex = (usize, Vertex);
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use simulation::plan::OneThreeRectangle;
+
+    #[test]
+    fn from_plan() {
+        let (x_size, y_size, total_time) = (2, 3, 4);
+        let plan = OneThreeRectangle::new(x_size, y_size);
+        let graph = TimeGraph::from_plan(&plan, total_time);
+
+        let nr_vertices = graph.vertices.iter().map(HashSet::len).sum::<usize>();
+        assert_eq!(nr_vertices as u64, x_size * y_size * total_time as u64);
+
+    }
+
+}

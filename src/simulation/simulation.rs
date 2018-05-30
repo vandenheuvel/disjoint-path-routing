@@ -5,6 +5,7 @@ use simulation::demand::Demand;
 use simulation::plan::Vertex;
 use simulation::demand::Request;
 use std::collections::HashSet;
+use std::collections::HashMap;
 
 pub struct Simulation<'a, 'p, 's> {
     algorithm: Box<Algorithm<'p, 's> + 'a>,
@@ -36,76 +37,81 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     }
     fn set_initial_state(&mut self) {
         let mut robot_states = Vec::with_capacity(self.settings.maximum_robots);
-
         for robot in 0..self.settings.maximum_robots {
             robot_states.push(RobotState {
-                robot,
+                robot_id: robot,
                 vertex: None,
-                parcel: None,
+                parcel_id: None,
             });
         }
+        let requests = self.demand
+            .generate(self.plan, self.settings.nr_requests)
+            .into_iter().enumerate()
+            .collect();
 
         self.history.states.push(State {
             robot_states,
-            requests: self.demand.generate(self.plan, self.settings.nr_requests),
+            requests,
         });
     }
     pub fn run(&mut self) {
-        while self.history.time() < self.settings.total_time {
+        while self.history.last_state().requests.len() > 0 &&
+            self.history.time() < self.settings.total_time {
             let instructions = self.algorithm.next_step(&self.history.states);
             self.new_state(instructions);
-            break;
         }
     }
-    fn new_state(&self, instructions: Instructions) -> Result<(), String> {
+    fn new_state(&mut self, instructions: Instructions) -> Result<(), String> {
         let mut used_states = HashSet::new();
         let mut new_states = self.history.last_state().robot_states.clone();
+        let mut new_requests = self.history.last_state().requests.clone();
 
-        for MoveInstruction { robot, parcel, vertex, } in instructions.movements {
+        for MoveInstruction { robot_id, parcel, vertex, } in instructions.movements {
             if !used_states.contains(&vertex) {
-                new_states[robot] = RobotState { robot, parcel, vertex: Some(vertex), };
+                new_states[robot_id] = RobotState { robot_id, parcel_id: parcel, vertex: Some(vertex), };
             }
 
             used_states.insert(vertex);
-            if let Some(previous_vertex) = self.history.last_robot_state(robot).vertex {
+            if let Some(previous_vertex) = self.history.last_robot_state(robot_id).vertex {
                 used_states.insert(previous_vertex);
             }
         }
 
-        for PlacementInstruction { robot, parcel, vertex, } in instructions.placements {
+        for PlacementInstruction { robot_id, parcel, vertex, } in instructions.placements {
             if !used_states.contains(&vertex) {
-                new_states[robot] = RobotState { robot, parcel: Some(parcel), vertex: Some(vertex), };
+                new_states[robot_id] = RobotState { robot_id, parcel_id: Some(parcel), vertex: Some(vertex), };
             }
 
             used_states.insert(vertex);
-            if let Some(previous_vertex) = self.history.last_robot_state(robot).vertex {
+            if let Some(previous_vertex) = self.history.last_robot_state(robot_id).vertex {
                 used_states.insert(previous_vertex);
             }
         }
 
-        for RemovalInstruction { robot, parcel, vertex, } in instructions.removals {
+        for RemovalInstruction { robot_id, parcel, vertex, } in instructions.removals {
             if !used_states.contains(&vertex) {
-                new_states[robot] = RobotState { robot, parcel: None, vertex: None, };
+                new_states[robot_id] = RobotState { robot_id, parcel_id: None, vertex: None, };
             }
+            new_requests.remove(&parcel);
 
-            if let Some(previous_vertex) = self.history.last_robot_state(robot).vertex {
+            if let Some(previous_vertex) = self.history.last_robot_state(robot_id).vertex {
                 used_states.insert(previous_vertex);
             }
         }
 
-        Ok(())
+        Ok(self.history.states.push(State { robot_states: new_states, requests: new_requests, }))
     }
 }
 
 pub struct State {
     pub robot_states: Vec<RobotState>,
-    pub requests: Vec<Request>,
+    pub requests: HashMap<usize, Request>,
 }
 
 #[derive(Copy, Clone)]
 pub struct RobotState {
-    pub robot: usize,
-    pub parcel: Option<Request>,
+    pub robot_id: usize,
+    pub parcel_id: Option<usize>,
     pub vertex: Option<Vertex>,
 }
 
@@ -145,13 +151,13 @@ pub struct Instructions {
     pub removals: Vec<RemovalInstruction>,
 }
 pub struct MoveInstruction {
-    pub robot: usize,
-    pub parcel: Option<Request>,
+    pub robot_id: usize,
+    pub parcel: Option<usize>,
     pub vertex: Vertex,
 }
 pub struct ParcelInstruction {
-    pub robot: usize,
-    pub parcel: Request,
+    pub robot_id: usize,
+    pub parcel: usize,
     pub vertex: Vertex,
 }
 pub type PlacementInstruction = ParcelInstruction;

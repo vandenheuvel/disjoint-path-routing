@@ -6,3 +6,4 @@ authors = ["Bram van den Heuvel <b.vandenheuvel@student.tudelft.nl>"]
 [dependencies]
 rand = "0.3"
 priority-queue = "0.5.1"
+itertools = "0.7.8"
