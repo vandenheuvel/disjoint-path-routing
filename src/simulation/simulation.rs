@@ -34,6 +34,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     /// Gets the initial state of the system set up, creates history of time 0.
     pub fn initialize(&mut self) {
         self.set_initial_state();
+        self.algorithm.initialize(&self.history.last_state().requests);
     }
     fn set_initial_state(&mut self) {
         let mut robot_states = Vec::with_capacity(self.settings.maximum_robots);
@@ -46,8 +47,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         }
         let requests = self.demand
             .generate(self.plan, self.settings.nr_requests)
-            .into_iter().enumerate()
-            .collect();
+            .into_iter().enumerate().collect();
 
         self.history.states.push(State {
             robot_states,
@@ -57,9 +57,11 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     pub fn run(&mut self) {
         while self.history.last_state().requests.len() > 0 &&
             self.history.time() < self.settings.total_time {
-            let instructions = self.algorithm.next_step(&self.history.states);
+            let instructions = self.algorithm.next_step(&self.history);
             self.new_state(instructions);
         }
+
+        println!("{:?}", self.history.time());
     }
     fn new_state(&mut self, instructions: Instructions) -> Result<(), String> {
         let mut used_states = HashSet::new();
@@ -127,18 +129,18 @@ impl History {
             calculation_times: Vec::new(),
         }
     }
-    fn calculate_statistics(&self) -> Statistics {
+    pub fn calculate_statistics(&self) -> Statistics {
         Statistics {
         }
     }
-    fn last_state(&self) -> &State {
+    pub fn last_state(&self) -> &State {
         self.states.last().unwrap()
     }
-    fn last_robot_state(&self, robot: usize) -> RobotState {
+    pub fn last_robot_state(&self, robot: usize) -> RobotState {
         self.last_state().robot_states[robot]
     }
-    fn time(&self) -> usize {
-        self.states.len()
+    pub fn time(&self) -> usize {
+        self.states.len() - 1
     }
 }
 

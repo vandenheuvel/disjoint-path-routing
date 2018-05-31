@@ -12,7 +12,7 @@ impl Default for Settings {
         Settings {
             total_time: 10,
             maximum_robots: 1,
-            nr_requests: 1,
+            nr_requests: 10,
         }
     }
 }

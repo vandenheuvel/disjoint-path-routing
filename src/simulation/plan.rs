@@ -112,7 +112,7 @@ impl Plan for OneThreeRectangle {
     fn y_size(&self) -> u64 { self.y_size }
 }
 #[derive(Debug)]
-struct UndirectedEdge {
+pub     struct UndirectedEdge {
     first: Vertex,
     second: Vertex,
 }
@@ -138,12 +138,12 @@ impl Into<(Vertex, Vertex)> for DirectedEdge {
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Vertex {
-    x: u64,
-    y: u64,
+    pub x: u64,
+    pub y: u64,
 }
 impl Vertex {
-    pub fn distance(&self, other: Vertex) -> u64 {
-        (self.x.max(other.x) - self.x.min(other.x)) + (self.y.max(other.y) - self.y.min(other.y))
+    pub fn distance(&self, other: Vertex) -> i64 {
+        ((self.x.max(other.x) - self.x.min(other.x)) + (self.y.max(other.y) - self.y.min(other.y))) as i64
     }
 }
 
