@@ -1,9 +1,9 @@
-use simulation::simulation::Instructions;
+use simulation::demand::Request;
 use simulation::plan::Plan;
 use simulation::settings::Settings;
+use simulation::simulation::Instructions;
 use std::collections::HashMap;
-use simulation::demand::Request;
-use simulation::simulation::History;
+use simulation::state::History;
 
 pub mod greedy_shortest_paths;
 pub mod time_graph;

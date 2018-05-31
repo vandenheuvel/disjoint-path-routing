@@ -112,7 +112,7 @@ impl Plan for OneThreeRectangle {
     fn y_size(&self) -> u64 { self.y_size }
 }
 #[derive(Debug)]
-pub     struct UndirectedEdge {
+pub struct UndirectedEdge {
     first: Vertex,
     second: Vertex,
 }
@@ -149,11 +149,9 @@ impl Vertex {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     mod vertex {
-
         use super::*;
 
         #[test]
@@ -171,10 +169,9 @@ mod test {
     }
 
     mod one_three_rectangle {
-
-        use super::*;
         use simulation::plan::Rectangle;
         use std::collections::HashSet;
+        use super::*;
 
         fn corners(x_size: u64, y_size: u64) -> [(u64, u64); 4] {[
             (0, 0),
@@ -313,7 +310,6 @@ mod test {
     }
 
     mod undirected_edges {
-
         use super::*;
 
         #[test]

@@ -1,17 +1,16 @@
 use algorithm::Algorithm;
-use simulation::plan::Plan;
-use simulation::settings::Settings;
-use simulation::simulation::Instructions;
-use simulation::simulation::State;
 use algorithm::time_graph::TimeGraph;
-use simulation::plan::Vertex;
 use simulation::demand::Request;
+use simulation::plan::Plan;
+use simulation::plan::Vertex;
+use simulation::settings::Settings;
 use simulation::simulation::{MoveInstruction, PlacementInstruction};
+use simulation::simulation::Instructions;
 use simulation::simulation::RemovalInstruction;
-use std::collections::HashMap;
-use simulation::simulation::RobotState;
 use std::collections::HashSet;
-use simulation::simulation::History;
+use std::collections::HashMap;
+use simulation::state::RobotState;
+use simulation::state::History;
 
 pub struct GreedyShortestPaths<'p, 's> {
     // Initialized at instantiation
@@ -59,10 +58,10 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
                         instructions: &mut Instructions,
                         current_time: usize) {
         let new_path = self.paths.iter()
-            .find(|&(parcel, Path { start_time, nodes, })| {
+            .find(|&(parcel, Path { start_time, nodes: _, })| {
                 *start_time == current_time && !paths_started.contains(parcel)
             });
-        if let Some((parcel, Path { start_time, nodes, })) = new_path {
+        if let Some((parcel, Path { start_time: _, nodes, })) = new_path {
             instructions.placements.push(PlacementInstruction {
                 robot_id,
                 parcel: *parcel,
@@ -78,10 +77,17 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
                           current_time: usize) {
         match robot_state.parcel_id {
             Some(parcel) => match robot_state.vertex {
-                Some(vertex) => self.move_or_remove_robot(robot_state.robot_id, vertex, parcel, instructions, current_time),
-                None => panic!("Robots with a parcel must be placed on a vertex"),
+                Some(vertex) => self.move_or_remove_robot(robot_state.robot_id,
+                                                          vertex,
+                                                          parcel,
+                                                          instructions,
+                                                          current_time),
+                None => panic!("Robots with a parcel must be placed on a vertex for this algorithm"),
             },
-            None => self.place_new_parcel(robot_state.robot_id, paths_started, instructions, current_time),
+            None => self.place_new_parcel(robot_state.robot_id,
+                                          paths_started,
+                                          instructions,
+                                          current_time),
         }
     }
 }
@@ -128,9 +134,8 @@ pub struct Path {
 
 #[cfg(test)]
 mod test {
-
-    use super::*;
     use simulation::plan::OneThreeRectangle;
+    use super::*;
 
     #[test]
     fn test_calculate_paths() {

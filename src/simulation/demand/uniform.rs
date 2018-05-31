@@ -1,18 +1,7 @@
-use rand::{Rng, StdRng, SeedableRng};
-
-use simulation::plan::Vertex;
+use rand::{Rng, SeedableRng, StdRng};
+use simulation::demand::Demand;
+use simulation::demand::Request;
 use simulation::plan::Plan;
-
-pub trait Demand {
-    fn create(seed: &[usize]) -> Self where Self: Sized;
-    fn generate(&mut self, plan: &Plan, nr_requests: u64) -> Vec<Request>;
-}
-
-#[derive(Copy, Clone)]
-pub struct Request {
-    pub source: Vertex,
-    pub terminal: Vertex,
-}
 
 /// Uniformly distributes source and demands
 pub struct Uniform {

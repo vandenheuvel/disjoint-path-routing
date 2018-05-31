@@ -1,12 +1,11 @@
-use std::u64;
-
+use algorithm::greedy_shortest_paths::Path;
 use itertools::repeat_n;
+use priority_queue::PriorityQueue;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
-use std::collections::HashSet;
-use algorithm::greedy_shortest_paths::Path;
-use priority_queue::PriorityQueue;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::u64;
 
 pub struct TimeGraph<'a> {
     plan: &'a Plan,
@@ -106,9 +105,8 @@ type TimeVertex = (usize, Vertex);
 
 #[cfg(test)]
 mod test {
-
-    use super::*;
     use simulation::plan::OneThreeRectangle;
+    use super::*;
 
     fn new() -> (u64, u64, usize, OneThreeRectangle) {
         let (x_size, y_size, total_time) = (3, 4, 8);
@@ -140,7 +138,7 @@ mod test {
 
     #[test]
     fn test_neighbors() {
-        let (x_size, y_size, total_time, plan) = new();
+        let (_, _, total_time, plan) = new();
         let time_graph = TimeGraph::from_plan(&plan, total_time);
 
         macro_rules! test {
@@ -180,7 +178,7 @@ mod test {
 
     #[test]
     fn test_find_path() {
-        let (x_size, y_size, total_time, plan) = new();
+        let (_, _, total_time, plan) = new();
         let time_graph = TimeGraph::from_plan(&plan, total_time);
 
         macro_rules! test {
@@ -228,7 +226,7 @@ mod test {
 
     #[test]
     fn test_find_earliest_path() {
-        let (x_size, y_size, total_time, plan) = new();
+        let (_, _, total_time, plan) = new();
         let time_graph = TimeGraph::from_plan(&plan, total_time);
         let from = Vertex { x: 0, y: 1, };
         let to = Vertex { x: 1, y: 1, };
@@ -240,7 +238,7 @@ mod test {
 
     #[test]
     fn test_remove_path() {
-        let (x_size, y_size, total_time, plan) = new();
+        let (_, _, total_time, plan) = new();
         let mut time_graph = TimeGraph::from_plan(&plan, total_time);
 
         let from = Vertex { x: 0, y: 1, };
