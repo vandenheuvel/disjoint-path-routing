@@ -4,11 +4,11 @@ use simulation::demand::Request;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
 use simulation::settings::Settings;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use simulation::state::History;
 use simulation::state::RobotState;
 use simulation::state::State;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub struct Simulation<'a, 'p, 's> {
     algorithm: Box<Algorithm<'p, 's> + 'a>,
@@ -20,11 +20,12 @@ pub struct Simulation<'a, 'p, 's> {
 }
 
 impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
-    pub fn new(algorithm: Box<Algorithm<'p, 's> + 'a>,
-           plan: &'p Plan,
-           demand: Box<Demand + 'a>,
-           settings: &'s Settings) -> Simulation<'a, 'p, 's> {
-
+    pub fn new(
+        algorithm: Box<Algorithm<'p, 's> + 'a>,
+        plan: &'p Plan,
+        demand: Box<Demand + 'a>,
+        settings: &'s Settings,
+    ) -> Simulation<'a, 'p, 's> {
         Simulation {
             algorithm,
             plan,
@@ -37,7 +38,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     /// Gets the initial state of the system set up, creates history of time 0.
     pub fn initialize(&mut self) {
         self.set_initial_state();
-        self.algorithm.initialize(&self.history.last_state().requests);
+        self.algorithm
+            .initialize(&self.history.last_state().requests);
     }
     fn set_initial_state(&mut self) {
         let mut robot_states = Vec::with_capacity(self.settings.maximum_robots);
@@ -48,9 +50,12 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
                 parcel_id: None,
             });
         }
-        let requests = self.demand
+        let requests = self
+            .demand
             .generate(self.plan, self.settings.nr_requests)
-            .into_iter().enumerate().collect();
+            .into_iter()
+            .enumerate()
+            .collect();
 
         self.history.states.push(State {
             robot_states,
@@ -58,8 +63,9 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         });
     }
     pub fn run(&mut self) {
-        while self.history.last_state().requests.len() > 0 &&
-            self.history.time() < self.settings.total_time {
+        while self.history.last_state().requests.len() > 0
+            && self.history.time() < self.settings.total_time
+        {
             let instructions = self.algorithm.next_step(&self.history);
             self.new_state(instructions);
         }
@@ -72,18 +78,41 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         let mut new_requests = self.history.last_state().requests.clone();
 
         self.process_move_instructions(instructions.movements, &mut new_states, &mut used_states);
-        self.process_placement_instructions(instructions.placements, &mut new_states, &mut used_states);
-        self.process_removal_instructions(instructions.removals, &mut new_states, &mut new_requests, &mut used_states);
+        self.process_placement_instructions(
+            instructions.placements,
+            &mut new_states,
+            &mut used_states,
+        );
+        self.process_removal_instructions(
+            instructions.removals,
+            &mut new_states,
+            &mut new_requests,
+            &mut used_states,
+        );
 
-        Ok(self.history.states.push(State { robot_states: new_states, requests: new_requests, }))
+        Ok(self.history.states.push(State {
+            robot_states: new_states,
+            requests: new_requests,
+        }))
     }
-    fn process_move_instructions(&self,
-                                 move_instructions: Vec<MoveInstruction>,
-                                 new_states: &mut Vec<RobotState>,
-                                 used_states: &mut HashSet<Vertex>) {
-        for MoveInstruction { robot_id, parcel, vertex, } in move_instructions {
+    fn process_move_instructions(
+        &self,
+        move_instructions: Vec<MoveInstruction>,
+        new_states: &mut Vec<RobotState>,
+        used_states: &mut HashSet<Vertex>,
+    ) {
+        for MoveInstruction {
+            robot_id,
+            parcel,
+            vertex,
+        } in move_instructions
+        {
             if !used_states.contains(&vertex) {
-                new_states[robot_id] = RobotState { robot_id, parcel_id: parcel, vertex: Some(vertex), };
+                new_states[robot_id] = RobotState {
+                    robot_id,
+                    parcel_id: parcel,
+                    vertex: Some(vertex),
+                };
             }
 
             used_states.insert(vertex);
@@ -92,13 +121,24 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             }
         }
     }
-    fn process_placement_instructions(&self,
-                                      placement_instructions: Vec<PlacementInstruction>,
-                                      new_states: &mut Vec<RobotState>,
-                                      used_states: &mut HashSet<Vertex>) {
-        for PlacementInstruction { robot_id, parcel, vertex, } in placement_instructions {
+    fn process_placement_instructions(
+        &self,
+        placement_instructions: Vec<PlacementInstruction>,
+        new_states: &mut Vec<RobotState>,
+        used_states: &mut HashSet<Vertex>,
+    ) {
+        for PlacementInstruction {
+            robot_id,
+            parcel,
+            vertex,
+        } in placement_instructions
+        {
             if !used_states.contains(&vertex) {
-                new_states[robot_id] = RobotState { robot_id, parcel_id: Some(parcel), vertex: Some(vertex), };
+                new_states[robot_id] = RobotState {
+                    robot_id,
+                    parcel_id: Some(parcel),
+                    vertex: Some(vertex),
+                };
             }
 
             used_states.insert(vertex);
@@ -107,14 +147,25 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             }
         }
     }
-    fn process_removal_instructions(&self,
-                                    removal_instructions: Vec<RemovalInstruction>,
-                                    new_states: &mut Vec<RobotState>,
-                                    new_requests: &mut HashMap<usize, Request>,
-                                    used_states: &mut HashSet<Vertex>) {
-        for RemovalInstruction { robot_id, parcel, vertex, } in removal_instructions {
+    fn process_removal_instructions(
+        &self,
+        removal_instructions: Vec<RemovalInstruction>,
+        new_states: &mut Vec<RobotState>,
+        new_requests: &mut HashMap<usize, Request>,
+        used_states: &mut HashSet<Vertex>,
+    ) {
+        for RemovalInstruction {
+            robot_id,
+            parcel,
+            vertex,
+        } in removal_instructions
+        {
             if !used_states.contains(&vertex) {
-                new_states[robot_id] = RobotState { robot_id, parcel_id: None, vertex: None, };
+                new_states[robot_id] = RobotState {
+                    robot_id,
+                    parcel_id: None,
+                    vertex: None,
+                };
             }
             new_requests.remove(&parcel);
 

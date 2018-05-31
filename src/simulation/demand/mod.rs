@@ -4,7 +4,9 @@ use simulation::plan::Vertex;
 pub mod uniform;
 
 pub trait Demand {
-    fn create(seed: &[usize]) -> Self where Self: Sized;
+    fn create(seed: &[usize]) -> Self
+    where
+        Self: Sized;
     fn generate(&mut self, plan: &Plan, nr_requests: u64) -> Vec<Request>;
 }
 

@@ -1,16 +1,16 @@
-use algorithm::Algorithm;
 use algorithm::time_graph::TimeGraph;
+use algorithm::Algorithm;
 use simulation::demand::Request;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
 use simulation::settings::Settings;
-use simulation::simulation::{MoveInstruction, PlacementInstruction};
 use simulation::simulation::Instructions;
 use simulation::simulation::RemovalInstruction;
-use std::collections::HashSet;
-use std::collections::HashMap;
-use simulation::state::RobotState;
+use simulation::simulation::{MoveInstruction, PlacementInstruction};
 use simulation::state::History;
+use simulation::state::RobotState;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub struct GreedyShortestPaths<'p, 's> {
     // Initialized at instantiation
@@ -26,7 +26,7 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
     fn calculate_paths(&mut self, requests: &HashMap<usize, Request>) -> HashMap<usize, Path> {
         let mut paths = HashMap::with_capacity(requests.len());
 
-        for (&id, &Request { source, terminal, }) in requests.into_iter() {
+        for (&id, &Request { source, terminal }) in requests.into_iter() {
             let path = self.time_graph.find_earliest_path(source, terminal);
             self.time_graph.remove_path(&path);
             paths.insert(id, path);
@@ -34,16 +34,25 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
 
         paths
     }
-    fn move_or_remove_robot(&self,
-                            robot_id: usize,
-                            vertex: Vertex,
-                            parcel: usize,
-                            instructions: &mut Instructions,
-                            current_time: usize) {
+    fn move_or_remove_robot(
+        &self,
+        robot_id: usize,
+        vertex: Vertex,
+        parcel: usize,
+        instructions: &mut Instructions,
+        current_time: usize,
+    ) {
         if vertex == *self.paths.get(&parcel).unwrap().nodes.last().unwrap() {
-            instructions.removals.push(RemovalInstruction { robot_id, vertex, parcel, });
+            instructions.removals.push(RemovalInstruction {
+                robot_id,
+                vertex,
+                parcel,
+            });
         } else {
-            let &Path { start_time, ref nodes, } = self.paths.get(&parcel).unwrap();
+            let &Path {
+                start_time,
+                ref nodes,
+            } = self.paths.get(&parcel).unwrap();
             let next = nodes[current_time - start_time];
             instructions.movements.push(MoveInstruction {
                 robot_id,
@@ -52,16 +61,30 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
             });
         }
     }
-    fn place_new_parcel(&self,
-                        robot_id: usize,
-                        paths_started: &mut HashSet<usize>,
-                        instructions: &mut Instructions,
-                        current_time: usize) {
-        let new_path = self.paths.iter()
-            .find(|&(parcel, Path { start_time, nodes: _, })| {
-                *start_time == current_time && !paths_started.contains(parcel)
-            });
-        if let Some((parcel, Path { start_time: _, nodes, })) = new_path {
+    fn place_new_parcel(
+        &self,
+        robot_id: usize,
+        paths_started: &mut HashSet<usize>,
+        instructions: &mut Instructions,
+        current_time: usize,
+    ) {
+        let new_path = self.paths.iter().find(
+            |&(
+                parcel,
+                Path {
+                    start_time,
+                    nodes: _,
+                },
+            )| { *start_time == current_time && !paths_started.contains(parcel) },
+        );
+        if let Some((
+            parcel,
+            Path {
+                start_time: _,
+                nodes,
+            },
+        )) = new_path
+        {
             instructions.placements.push(PlacementInstruction {
                 robot_id,
                 parcel: *parcel,
@@ -70,24 +93,32 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
             paths_started.insert(*parcel);
         }
     }
-    fn update_robot_state(&self,
-                          robot_state: &RobotState,
-                          instructions: &mut Instructions,
-                          paths_started: &mut HashSet<usize>,
-                          current_time: usize) {
+    fn update_robot_state(
+        &self,
+        robot_state: &RobotState,
+        instructions: &mut Instructions,
+        paths_started: &mut HashSet<usize>,
+        current_time: usize,
+    ) {
         match robot_state.parcel_id {
             Some(parcel) => match robot_state.vertex {
-                Some(vertex) => self.move_or_remove_robot(robot_state.robot_id,
-                                                          vertex,
-                                                          parcel,
-                                                          instructions,
-                                                          current_time),
-                None => panic!("Robots with a parcel must be placed on a vertex for this algorithm"),
+                Some(vertex) => self.move_or_remove_robot(
+                    robot_state.robot_id,
+                    vertex,
+                    parcel,
+                    instructions,
+                    current_time,
+                ),
+                None => {
+                    panic!("Robots with a parcel must be placed on a vertex for this algorithm")
+                }
             },
-            None => self.place_new_parcel(robot_state.robot_id,
-                                          paths_started,
-                                          instructions,
-                                          current_time),
+            None => self.place_new_parcel(
+                robot_state.robot_id,
+                paths_started,
+                instructions,
+                current_time,
+            ),
         }
     }
 }
@@ -119,7 +150,12 @@ impl<'p, 's> Algorithm<'p, 's> for GreedyShortestPaths<'p, 's> {
         };
 
         for robot_state in &history.last_state().robot_states {
-            self.update_robot_state(robot_state, &mut instructions, &mut paths_started, history.time());
+            self.update_robot_state(
+                robot_state,
+                &mut instructions,
+                &mut paths_started,
+                history.time(),
+            );
         }
 
         instructions
@@ -129,13 +165,13 @@ impl<'p, 's> Algorithm<'p, 's> for GreedyShortestPaths<'p, 's> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Path {
     pub start_time: usize,
-    pub nodes: Vec<Vertex>
+    pub nodes: Vec<Vertex>,
 }
 
 #[cfg(test)]
 mod test {
-    use simulation::plan::OneThreeRectangle;
     use super::*;
+    use simulation::plan::OneThreeRectangle;
 
     #[test]
     fn test_calculate_paths() {
@@ -146,15 +182,18 @@ mod test {
             nr_requests: 1,
         };
         let mut requests = HashMap::new();
-        let source = Vertex { x: 0, y: 1, };
-        let terminal = Vertex { x: 2, y: 1, };
-        requests.insert(0, Request { source, terminal, });
+        let source = Vertex { x: 0, y: 1 };
+        let terminal = Vertex { x: 2, y: 1 };
+        requests.insert(0, Request { source, terminal });
         let mut algorithm = GreedyShortestPaths::instantiate(&plan, &settings);
         algorithm.calculate_paths(&requests);
         assert_eq!(algorithm.paths.len(), 1);
-        assert_eq!(algorithm.paths.get(&0), Some(&Path {
-            start_time: 0,
-            nodes: vec![source, Vertex { x: 1, y: 1, }, terminal],
-        }));
+        assert_eq!(
+            algorithm.paths.get(&0),
+            Some(&Path {
+                start_time: 0,
+                nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+            })
+        );
     }
 }

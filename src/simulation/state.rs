@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use simulation::demand::Request;
 use simulation::plan::Vertex;
 use simulation::statistics::Statistics;
-use simulation::demand::Request;
+use std::collections::HashMap;
 
 pub struct State {
     pub robot_states: Vec<RobotState>,
@@ -28,8 +28,7 @@ impl History {
         }
     }
     pub fn calculate_statistics(&self) -> Statistics {
-        Statistics {
-        }
+        Statistics {}
     }
     pub fn last_state(&self) -> &State {
         self.states.last().unwrap()

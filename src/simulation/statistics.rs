@@ -1,2 +1,1 @@
-pub struct Statistics {
-}
+pub struct Statistics {}
