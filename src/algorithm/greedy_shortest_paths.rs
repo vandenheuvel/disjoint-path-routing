@@ -57,7 +57,6 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
             instructions.movements.push(MoveInstruction {
                 robot_id,
                 vertex: next,
-                parcel: Some(parcel),
             });
         }
     }

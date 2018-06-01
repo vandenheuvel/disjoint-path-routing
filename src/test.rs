@@ -23,5 +23,5 @@ fn it_works() {
 
     let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
     simulation.initialize();
-    simulation.run();
+    assert!(simulation.run().is_ok());
 }

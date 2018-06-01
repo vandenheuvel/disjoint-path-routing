@@ -2,6 +2,7 @@ use itertools::Itertools;
 use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
+use std::io;
 
 pub mod one_three_rectangle;
 
@@ -11,26 +12,26 @@ pub trait Plan {
     fn terminals(&self) -> Vec<Vertex>;
     fn edges(&self) -> Vec<UndirectedEdge>;
     fn neighbors(&self, vertex: &Vertex) -> Vec<Vertex>;
-    fn write(&self, writer: &mut BufWriter<File>) {
-        writer.write("# Vertices\n".as_bytes());
+    fn write(&self, writer: &mut BufWriter<File>) -> io::Result<()> {
+        writer.write("# Vertices\n".as_bytes())?;
         for Vertex { x, y } in self.vertices() {
-            writer.write(format!("{},{}\n", x, y).as_bytes());
+            writer.write(format!("{},{}\n", x, y).as_bytes())?;
         }
-        writer.write("###\n".as_bytes());
+        writer.write("###\n".as_bytes())?;
 
-        writer.write("# Sources\n".as_bytes());
+        writer.write("# Sources\n".as_bytes())?;
         for Vertex { x, y } in self.sources() {
-            writer.write(format!("{},{}\n", x, y).as_bytes());
+            writer.write(format!("{},{}\n", x, y).as_bytes())?;
         }
-        writer.write("###\n".as_bytes());
+        writer.write("###\n".as_bytes())?;
 
-        writer.write("# Terminals\n".as_bytes());
+        writer.write("# Terminals\n".as_bytes())?;
         for Vertex { x, y } in self.terminals() {
-            writer.write(format!("{},{}\n", x, y).as_bytes());
+            writer.write(format!("{},{}\n", x, y).as_bytes())?;
         }
-        writer.write("###\n".as_bytes());
+        writer.write("###\n".as_bytes())?;
 
-        writer.flush();
+        writer.flush()
     }
     fn nr_vertices(&self) -> u64;
 }
