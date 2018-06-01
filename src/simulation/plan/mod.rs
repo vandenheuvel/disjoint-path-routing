@@ -1,8 +1,7 @@
+use itertools::Itertools;
+use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
-use std::fs::File;
-
-use itertools::Itertools;
 
 pub mod one_three_rectangle;
 

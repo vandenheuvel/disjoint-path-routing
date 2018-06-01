@@ -1,19 +1,19 @@
 use algorithm::Algorithm;
 use simulation::demand::Demand;
 use simulation::demand::Request;
+use simulation::plan::Plan;
+use simulation::plan::Vertex;
 use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::state::RobotState;
 use simulation::state::State;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fs::File;
+use std::fs::OpenOptions;
 use std::io;
 use std::io::BufWriter;
 use std::io::Write;
-use std::fs::OpenOptions;
-use simulation::plan::Plan;
-use simulation::plan::Vertex;
-use std::fs::File;
 
 pub struct Simulation<'a, 'p, 's> {
     algorithm: Box<Algorithm<'p, 's> + 'a>,

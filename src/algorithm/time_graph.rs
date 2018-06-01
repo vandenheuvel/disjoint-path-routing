@@ -122,8 +122,8 @@ type TimeVertex = (usize, Vertex);
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use simulation::plan::one_three_rectangle::OneThreeRectangle;
+    use super::*;
 
     fn new() -> (u64, u64, usize, OneThreeRectangle) {
         let (x_size, y_size, total_time) = (3, 4, 8);

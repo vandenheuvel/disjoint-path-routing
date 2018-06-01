@@ -1,7 +1,7 @@
-use simulation::plan::Vertex;
-use simulation::plan::UndirectedEdge;
 use simulation::plan::Plan;
 use simulation::plan::Rectangle;
+use simulation::plan::UndirectedEdge;
+use simulation::plan::Vertex;
 
 pub struct OneThreeRectangle {
     pub x_size: u64,
@@ -124,9 +124,9 @@ mod test {
     }
 
     mod one_three_rectangle {
-        use super::*;
         use simulation::plan::Rectangle;
         use std::collections::HashSet;
+        use super::*;
 
         fn corners(x_size: u64, y_size: u64) -> [(u64, u64); 4] {
             [

@@ -1,16 +1,16 @@
-use algorithm::time_graph::TimeGraph;
 use algorithm::Algorithm;
+use algorithm::time_graph::TimeGraph;
 use simulation::demand::Request;
+use simulation::plan::Plan;
+use simulation::plan::Vertex;
 use simulation::settings::Settings;
+use simulation::simulation::{MoveInstruction, PlacementInstruction};
 use simulation::simulation::Instructions;
 use simulation::simulation::RemovalInstruction;
-use simulation::simulation::{MoveInstruction, PlacementInstruction};
 use simulation::state::History;
 use simulation::state::RobotState;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use simulation::plan::Vertex;
-use simulation::plan::Plan;
 
 pub struct GreedyShortestPaths<'p, 's> {
     // Initialized at instantiation
@@ -170,9 +170,8 @@ pub struct Path {
 
 #[cfg(test)]
 mod test {
-
-    use super::*;
     use simulation::plan::one_three_rectangle::OneThreeRectangle;
+    use super::*;
 
     #[test]
     fn test_calculate_paths() {

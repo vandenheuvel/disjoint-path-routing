@@ -2,9 +2,9 @@ use simulation::demand::Request;
 use simulation::plan::Vertex;
 use simulation::statistics::Statistics;
 use std::collections::HashMap;
+use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
-use std::fs::File;
 
 pub struct State {
     pub robot_states: Vec<RobotState>,

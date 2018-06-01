@@ -1,10 +1,10 @@
-use algorithm::greedy_shortest_paths::GreedyShortestPaths;
 use algorithm::Algorithm;
-use simulation::demand::uniform::Uniform;
+use algorithm::greedy_shortest_paths::GreedyShortestPaths;
 use simulation::demand::Demand;
+use simulation::demand::uniform::Uniform;
+use simulation::plan::one_three_rectangle::OneThreeRectangle;
 use simulation::settings::Settings;
 use simulation::simulation::Simulation;
-use simulation::plan::one_three_rectangle::OneThreeRectangle;
 
 #[test]
 fn it_works() {
