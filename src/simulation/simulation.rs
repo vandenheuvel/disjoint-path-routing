@@ -84,7 +84,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     }
     pub fn run(&mut self) {
         while self.history.last_state().requests.len() > 0
-            && self.history.time() <= self.settings.total_time {
+            && self.history.time() <= self.settings.total_time
+        {
             let instructions = self.algorithm.next_step(&self.history);
             self.new_state(instructions);
             if let Some(ref mut writer) = self.output_writer {

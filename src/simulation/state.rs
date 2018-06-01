@@ -14,9 +14,14 @@ pub struct State {
 impl State {
     pub fn write(&self, writer: &mut BufWriter<File>) {
         writer.write(format!("# Robot positions\n").as_bytes());
-        for RobotState { robot_id, parcel_id, vertex, } in &self.robot_states {
+        for RobotState {
+            robot_id,
+            parcel_id,
+            vertex,
+        } in &self.robot_states
+        {
             match (parcel_id, vertex) {
-                (Some(parcel), Some(Vertex { x, y, })) => {
+                (Some(parcel), Some(Vertex { x, y })) => {
                     writer.write(format!("{},{},{},{}\n", robot_id, parcel, x, y).as_bytes());
                 }
                 (None, None) => (),

@@ -13,19 +13,19 @@ pub trait Plan {
     fn neighbors(&self, vertex: &Vertex) -> Vec<Vertex>;
     fn write(&self, writer: &mut BufWriter<File>) {
         writer.write("# Vertices\n".as_bytes());
-        for Vertex { x, y, } in self.vertices() {
+        for Vertex { x, y } in self.vertices() {
             writer.write(format!("{},{}\n", x, y).as_bytes());
         }
         writer.write("###\n".as_bytes());
 
         writer.write("# Sources\n".as_bytes());
-        for Vertex { x, y, } in self.sources() {
+        for Vertex { x, y } in self.sources() {
             writer.write(format!("{},{}\n", x, y).as_bytes());
         }
         writer.write("###\n".as_bytes());
 
         writer.write("# Terminals\n".as_bytes());
-        for Vertex { x, y, } in self.terminals() {
+        for Vertex { x, y } in self.terminals() {
             writer.write(format!("{},{}\n", x, y).as_bytes());
         }
         writer.write("###\n".as_bytes());

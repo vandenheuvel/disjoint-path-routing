@@ -1,7 +1,7 @@
-use algorithm::Algorithm;
 use algorithm::greedy_shortest_paths::GreedyShortestPaths;
-use simulation::demand::Demand;
+use algorithm::Algorithm;
 use simulation::demand::uniform::Uniform;
+use simulation::demand::Demand;
 use simulation::plan::one_three_rectangle::OneThreeRectangle;
 use simulation::settings::Settings;
 use simulation::simulation::Simulation;
