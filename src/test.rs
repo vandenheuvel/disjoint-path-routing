@@ -8,13 +8,13 @@ use simulation::simulation::Simulation;
 
 #[test]
 fn it_works() {
-    let plan = OneThreeRectangle::new(5, 5);
+    let plan = OneThreeRectangle::new(25, 25);
     let settings = Settings {
-        total_time: 15,
-        maximum_robots: 2,
-        nr_requests: 2,
+        total_time: 200,
+        maximum_robots: 20,
+        nr_requests: 60,
         real_time: false,
-        output_file: None,
+        output_file: Some("/tmp/disjoint".to_string()),
     };
     let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(
         &plan, &settings,
@@ -23,5 +23,7 @@ fn it_works() {
 
     let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
     simulation.initialize();
-    assert!(simulation.run().is_ok());
+    if let Err(error) = simulation.run() {
+        println!("{:?}", error.message());
+    };
 }

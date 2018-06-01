@@ -51,6 +51,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             .initialize(&self.history.last_state().requests);
 
         if let Some(ref mut writer) = self.output_writer {
+            self.settings.write(writer);
             self.plan.write(writer);
         }
     }
@@ -94,24 +95,41 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 
         Ok(self.history)
     }
-    fn new_state(&mut self, instructions: Instructions) -> Result<(), Box<IllegalInstructionError>> {
-        let mut used_vertices = HashSet::new();
+    fn new_state(
+        &mut self,
+        instructions: Instructions,
+    ) -> Result<(), Box<IllegalInstructionError>> {
+        let mut used_vertices = self
+            .history
+            .last_state()
+            .robot_states
+            .iter()
+            .filter(|robot| robot.vertex.is_some())
+            .map(|robot| (robot.vertex.unwrap(), robot.robot_id))
+            .collect::<HashMap<_, _>>();
+        let mut newly_used_vertices = HashSet::new();
+
         let mut new_states = self.history.last_state().robot_states.clone();
         let mut new_requests = self.history.last_state().requests.clone();
 
-        self.process_move_instructions(instructions.movements, &mut new_states, &mut used_vertices)
-            .map_err(|e| Box::new(e) as Box<IllegalInstructionError>)?;
+        self.process_move_instructions(
+            instructions.movements,
+            &mut new_states,
+            &used_vertices,
+            &mut newly_used_vertices,
+        ).map_err(|e| Box::new(e) as Box<IllegalInstructionError>)?;
         self.process_placement_instructions(
             instructions.placements,
             &mut new_states,
-            &mut used_vertices,
+            &used_vertices,
+            &mut newly_used_vertices,
             &mut new_requests,
         ).map_err(|e| Box::new(e) as Box<IllegalInstructionError>)?;
         self.process_removal_instructions(
             instructions.removals,
             &mut new_states,
             &mut new_requests,
-            &mut used_vertices,
+            &mut newly_used_vertices,
         ).map_err(|e| Box::new(e) as Box<IllegalInstructionError>)?;
 
         Ok(self.history.states.push(State {
@@ -123,10 +141,15 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         &self,
         move_instructions: Vec<MoveInstruction>,
         new_states: &mut Vec<RobotState>,
-        used_vertices: &mut HashSet<Vertex>,
+        used_vertices: &HashMap<Vertex, usize>,
+        newly_used_vertices: &mut HashSet<Vertex>,
     ) -> Result<(), IllegalMoveError> {
         for instruction in move_instructions {
-            if let Some(error) = self.check_for_move_instruction_error(instruction, used_vertices) {
+            if let Some(error) = self.check_for_move_instruction_error(
+                instruction,
+                used_vertices,
+                newly_used_vertices,
+            ) {
                 return Err(error);
             }
             let MoveInstruction { robot_id, vertex } = instruction;
@@ -136,9 +159,9 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
                 parcel_id: self.history.last_robot_state(robot_id).parcel_id,
                 vertex: Some(vertex),
             };
-            used_vertices.insert(vertex);
+            newly_used_vertices.insert(vertex);
             if let Some(previous_vertex) = self.history.last_robot_state(robot_id).vertex {
-                used_vertices.insert(previous_vertex);
+                newly_used_vertices.insert(previous_vertex);
             }
         }
 
@@ -147,18 +170,34 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     fn check_for_move_instruction_error(
         &self,
         instruction: MoveInstruction,
-        used_vertices: &HashSet<Vertex>
+        used_vertices: &HashMap<Vertex, usize>,
+        newly_used_vertices: &HashSet<Vertex>,
     ) -> Option<IllegalMoveError> {
         let MoveInstruction { robot_id, vertex } = instruction;
 
-        if used_vertices.contains(&vertex) {
-            return Some(IllegalMoveError::from(instruction, "State already used".to_string()));
+        match used_vertices.get(&vertex) {
+            None => (),
+            Some(robot) if *robot != instruction.robot_id => {
+                return Some(IllegalMoveError::from(
+                    instruction,
+                    "State used in previous time step".to_string(),
+                ));
+            }
+            _ => (),
+        }
+        if newly_used_vertices.contains(&vertex) {
+            return Some(IllegalMoveError::from(
+                instruction,
+                "State will be used in next time step".to_string(),
+            ));
         }
         match self.history.last_robot_state(robot_id).vertex {
-            None => return Some(IllegalMoveError {
-                instruction,
-                message: "Not yet placed on any vertex".to_string(),
-            }),
+            None => {
+                return Some(IllegalMoveError {
+                    instruction,
+                    message: "Not yet placed on any vertex".to_string(),
+                })
+            }
             Some(previous_vertex) => {
                 if previous_vertex.distance(vertex) > 1 {
                     return Some(IllegalMoveError {
@@ -175,23 +214,31 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         &self,
         placement_instructions: Vec<PlacementInstruction>,
         new_states: &mut Vec<RobotState>,
-        used_vertices: &mut HashSet<Vertex>,
+        used_vertices: &HashMap<Vertex, usize>,
+        newly_used_vertices: &mut HashSet<Vertex>,
         new_requests: &mut HashMap<usize, Request>,
     ) -> Result<(), IllegalPlacementError> {
         for instruction in placement_instructions {
-            if let Some(error) = self.check_for_placement_instruction_error(instruction,
-                                                                            used_vertices,
-                                                                            new_requests) {
+            if let Some(error) = self.check_for_placement_instruction_error(
+                instruction,
+                used_vertices,
+                newly_used_vertices,
+                new_requests,
+            ) {
                 return Err(error);
             }
-            let ParcelInstruction { robot_id, parcel, vertex, } = instruction;
+            let ParcelInstruction {
+                robot_id,
+                parcel,
+                vertex,
+            } = instruction;
             new_states[robot_id] = RobotState {
                 robot_id,
                 parcel_id: Some(parcel),
                 vertex: Some(vertex),
             };
 
-            used_vertices.insert(vertex);
+            newly_used_vertices.insert(vertex);
         }
 
         Ok(())
@@ -199,19 +246,39 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     fn check_for_placement_instruction_error(
         &self,
         instruction: PlacementInstruction,
-        used_vertices: &HashSet<Vertex>,
+        used_vertices: &HashMap<Vertex, usize>,
+        newly_used_vertices: &mut HashSet<Vertex>,
         new_requests: &mut HashMap<usize, Request>,
     ) -> Option<IllegalPlacementError> {
-        let PlacementInstruction { robot_id, parcel, vertex } = instruction;
+        let PlacementInstruction {
+            robot_id,
+            parcel,
+            vertex,
+        } = instruction;
 
-        if used_vertices.contains(&vertex) {
-            return Some(IllegalPlacementError::from(instruction, "State already used".to_string()));
+        if used_vertices.contains_key(&vertex) {
+            return Some(IllegalPlacementError::from(
+                instruction,
+                "Vertex used in previous time step".to_string(),
+            ));
+        }
+        if newly_used_vertices.contains(&vertex) {
+            return Some(IllegalPlacementError::from(
+                instruction,
+                "Vertex already used in next time step".to_string(),
+            ));
         }
         if self.history.last_robot_state(robot_id).vertex.is_some() {
-            return Some(IllegalPlacementError::from(instruction, "Robot already placed".to_string()));
+            return Some(IllegalPlacementError::from(
+                instruction,
+                "Robot already placed".to_string(),
+            ));
         }
         if !new_requests.contains_key(&parcel) {
-            return Some(IllegalPlacementError::from(instruction, "Parcel no longer needed".to_string()));
+            return Some(IllegalPlacementError::from(
+                instruction,
+                "Parcel no longer needed".to_string(),
+            ));
         }
 
         None
@@ -228,8 +295,16 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
                 return Err(error);
             }
 
-            let RemovalInstruction { robot_id, parcel, vertex: _, } = instruction;
-            new_states[robot_id] = RobotState { robot_id, parcel_id: None, vertex: None, };
+            let RemovalInstruction {
+                robot_id,
+                parcel,
+                vertex: _,
+            } = instruction;
+            new_states[robot_id] = RobotState {
+                robot_id,
+                parcel_id: None,
+                vertex: None,
+            };
             new_requests.remove(&parcel);
 
             if let Some(previous_vertex) = self.history.last_robot_state(robot_id).vertex {
@@ -246,17 +321,36 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         match self.history.last_robot_state(instruction.robot_id).vertex {
             Some(vertex) => {
                 if vertex != instruction.vertex {
-                    return Some(IllegalRemovalError::from(instruction,
-                                                          "Robot is not at this location".to_string()));
+                    return Some(IllegalRemovalError::from(
+                        instruction,
+                        "Robot is not at this location".to_string(),
+                    ));
                 }
             }
-            None => return Some(IllegalRemovalError::from(instruction, "Robot isn't placed".to_string())),
+            None => {
+                return Some(IllegalRemovalError::from(
+                    instruction,
+                    "Robot isn't placed".to_string(),
+                ))
+            }
         }
 
-        match self.history.last_robot_state(instruction.robot_id).parcel_id {
-            None => return Some(IllegalRemovalError::from(instruction, "Robot has no parcel".to_string())),
+        match self
+            .history
+            .last_robot_state(instruction.robot_id)
+            .parcel_id
+        {
+            None => {
+                return Some(IllegalRemovalError::from(
+                    instruction,
+                    "Robot has no parcel".to_string(),
+                ))
+            }
             Some(parcel) if parcel != instruction.parcel => {
-                return Some(IllegalRemovalError::from(instruction, "Robot holds other parcel".to_string()));
+                return Some(IllegalRemovalError::from(
+                    instruction,
+                    "Robot holds other parcel".to_string(),
+                ));
             }
             _ => (),
         }
@@ -301,7 +395,10 @@ pub struct IllegalMoveError {
 }
 impl IllegalMoveError {
     fn from(instruction: MoveInstruction, message: String) -> IllegalMoveError {
-        IllegalMoveError { instruction, message, }
+        IllegalMoveError {
+            instruction,
+            message,
+        }
     }
 }
 impl IllegalInstructionError for IllegalMoveError {
@@ -319,7 +416,10 @@ pub struct IllegalPlacementError {
 }
 impl IllegalPlacementError {
     fn from(instruction: PlacementInstruction, message: String) -> IllegalPlacementError {
-        IllegalPlacementError { instruction, message, }
+        IllegalPlacementError {
+            instruction,
+            message,
+        }
     }
 }
 impl IllegalInstructionError for IllegalPlacementError {
@@ -331,14 +431,16 @@ impl IllegalInstructionError for IllegalPlacementError {
     }
 }
 
-
 pub struct IllegalRemovalError {
     instruction: RemovalInstruction,
     message: String,
 }
 impl IllegalRemovalError {
     fn from(instruction: RemovalInstruction, message: String) -> IllegalRemovalError {
-        IllegalRemovalError { instruction, message, }
+        IllegalRemovalError {
+            instruction,
+            message,
+        }
     }
 }
 impl IllegalInstructionError for IllegalRemovalError {

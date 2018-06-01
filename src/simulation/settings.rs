@@ -1,3 +1,8 @@
+use std::fs::File;
+use std::io;
+use std::io::BufWriter;
+use std::io::Write;
+
 pub struct Settings {
     pub total_time: usize,
     pub maximum_robots: usize,
@@ -6,6 +11,16 @@ pub struct Settings {
     pub output_file: Option<String>,
     // pub failure_rate: f64,
     // pub taxi_or_paths: TaxiOrPath,
+}
+
+impl Settings {
+    pub fn write(&self, writer: &mut BufWriter<File>) -> io::Result<()> {
+        writer.write("# Number of robots\n".as_bytes())?;
+        writer.write(format!("{}\n", self.maximum_robots).as_bytes())?;
+        writer.write("###\n".as_bytes())?;
+
+        writer.flush()
+    }
 }
 
 impl Default for Settings {
