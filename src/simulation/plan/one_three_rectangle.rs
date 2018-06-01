@@ -1,23 +1,8 @@
-use itertools::Itertools;
+use simulation::plan::Vertex;
+use simulation::plan::UndirectedEdge;
+use simulation::plan::Plan;
+use simulation::plan::Rectangle;
 
-pub trait Plan {
-    fn vertices(&self) -> Vec<Vertex>;
-    fn sources(&self) -> Vec<Vertex>;
-    fn terminals(&self) -> Vec<Vertex>;
-    fn edges(&self) -> Vec<UndirectedEdge>;
-    fn neighbors(&self, vertex: &Vertex) -> Vec<Vertex>;
-    fn nr_vertices(&self) -> u64;
-    fn x_size(&self) -> u64;
-    fn y_size(&self) -> u64;
-}
-pub trait Rectangle: Plan {
-    fn vertices(&self) -> Vec<Vertex> {
-        (0..self.x_size())
-            .cartesian_product(0..self.y_size())
-            .map(|(x, y)| Vertex { x, y })
-            .collect()
-    }
-}
 pub struct OneThreeRectangle {
     pub x_size: u64,
     pub y_size: u64,
@@ -33,7 +18,14 @@ impl OneThreeRectangle {
         OneThreeRectangle { x_size, y_size }
     }
 }
-impl Rectangle for OneThreeRectangle {}
+impl Rectangle for OneThreeRectangle {
+    fn x_size(&self) -> u64 {
+        self.x_size
+    }
+    fn y_size(&self) -> u64 {
+        self.y_size
+    }
+}
 impl Plan for OneThreeRectangle {
     fn vertices(&self) -> Vec<Vertex> {
         Rectangle::vertices(self)
@@ -107,48 +99,6 @@ impl Plan for OneThreeRectangle {
     }
     fn nr_vertices(&self) -> u64 {
         self.x_size() * self.y_size()
-    }
-    fn x_size(&self) -> u64 {
-        self.x_size
-    }
-    fn y_size(&self) -> u64 {
-        self.y_size
-    }
-}
-#[derive(Debug)]
-pub struct UndirectedEdge {
-    first: Vertex,
-    second: Vertex,
-}
-impl PartialEq for UndirectedEdge {
-    fn eq(&self, other: &UndirectedEdge) -> bool {
-        let &UndirectedEdge { first, second } = other;
-        self.first == first && self.second == second || self.first == second && self.second == first
-    }
-}
-
-struct DirectedEdge(Vertex, Vertex);
-impl From<(Vertex, Vertex)> for DirectedEdge {
-    fn from((first, second): (Vertex, Vertex)) -> Self {
-        DirectedEdge(first, second)
-    }
-}
-impl Into<(Vertex, Vertex)> for DirectedEdge {
-    fn into(self) -> (Vertex, Vertex) {
-        let DirectedEdge(from, to) = self;
-        (from, to)
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Vertex {
-    pub x: u64,
-    pub y: u64,
-}
-impl Vertex {
-    pub fn distance(&self, other: Vertex) -> i64 {
-        ((self.x.max(other.x) - self.x.min(other.x)) + (self.y.max(other.y) - self.y.min(other.y)))
-            as i64
     }
 }
 

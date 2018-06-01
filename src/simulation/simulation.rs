@@ -1,14 +1,19 @@
 use algorithm::Algorithm;
 use simulation::demand::Demand;
 use simulation::demand::Request;
-use simulation::plan::Plan;
-use simulation::plan::Vertex;
 use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::state::RobotState;
 use simulation::state::State;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::io;
+use std::io::BufWriter;
+use std::io::Write;
+use std::fs::OpenOptions;
+use simulation::plan::Plan;
+use simulation::plan::Vertex;
+use std::fs::File;
 
 pub struct Simulation<'a, 'p, 's> {
     algorithm: Box<Algorithm<'p, 's> + 'a>,
@@ -17,6 +22,7 @@ pub struct Simulation<'a, 'p, 's> {
     settings: &'s Settings,
 
     history: History,
+    output_writer: Option<BufWriter<File>>,
 }
 
 impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
@@ -33,13 +39,27 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             settings,
 
             history: History::empty(),
+            output_writer: None,
         }
     }
     /// Gets the initial state of the system set up, creates history of time 0.
     pub fn initialize(&mut self) {
+        if let Some(ref file_name) = self.settings.output_file {
+            self.setup_output(file_name).unwrap();
+        }
         self.set_initial_state();
         self.algorithm
             .initialize(&self.history.last_state().requests);
+
+        if let Some(ref mut writer) = self.output_writer {
+            self.plan.write(writer)
+        }
+    }
+    fn setup_output(&mut self, output_file_name: &String) -> io::Result<()> {
+        let mut file = OpenOptions::new().write(true).open(output_file_name)?;
+        let buffered_writer = BufWriter::new(file);
+
+        Ok(self.output_writer = Some(buffered_writer))
     }
     fn set_initial_state(&mut self) {
         let mut robot_states = Vec::with_capacity(self.settings.maximum_robots);
@@ -64,10 +84,12 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     }
     pub fn run(&mut self) {
         while self.history.last_state().requests.len() > 0
-            && self.history.time() < self.settings.total_time
-        {
+            && self.history.time() <= self.settings.total_time {
             let instructions = self.algorithm.next_step(&self.history);
             self.new_state(instructions);
+            if let Some(ref mut writer) = self.output_writer {
+                self.history.last_state().write(writer);
+            }
         }
 
         println!("{:?}", self.history.time());

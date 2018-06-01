@@ -1,8 +1,6 @@
 use algorithm::time_graph::TimeGraph;
 use algorithm::Algorithm;
 use simulation::demand::Request;
-use simulation::plan::Plan;
-use simulation::plan::Vertex;
 use simulation::settings::Settings;
 use simulation::simulation::Instructions;
 use simulation::simulation::RemovalInstruction;
@@ -11,6 +9,8 @@ use simulation::state::History;
 use simulation::state::RobotState;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use simulation::plan::Vertex;
+use simulation::plan::Plan;
 
 pub struct GreedyShortestPaths<'p, 's> {
     // Initialized at instantiation
@@ -170,8 +170,9 @@ pub struct Path {
 
 #[cfg(test)]
 mod test {
+
     use super::*;
-    use simulation::plan::OneThreeRectangle;
+    use simulation::plan::one_three_rectangle::OneThreeRectangle;
 
     #[test]
     fn test_calculate_paths() {
@@ -180,6 +181,8 @@ mod test {
             total_time: 10,
             maximum_robots: 1,
             nr_requests: 1,
+            real_time: false,
+            output_file: None,
         };
         let mut requests = HashMap::new();
         let source = Vertex { x: 0, y: 1 };

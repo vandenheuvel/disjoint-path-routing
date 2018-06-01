@@ -2,10 +2,30 @@ use simulation::demand::Request;
 use simulation::plan::Vertex;
 use simulation::statistics::Statistics;
 use std::collections::HashMap;
+use std::io::BufWriter;
+use std::io::Write;
+use std::fs::File;
 
 pub struct State {
     pub robot_states: Vec<RobotState>,
     pub requests: HashMap<usize, Request>,
+}
+
+impl State {
+    pub fn write(&self, writer: &mut BufWriter<File>) {
+        writer.write(format!("# Robot positions\n").as_bytes());
+        for RobotState { robot_id, parcel_id, vertex, } in &self.robot_states {
+            match (parcel_id, vertex) {
+                (Some(parcel), Some(Vertex { x, y, })) => {
+                    writer.write(format!("{},{},{},{}\n", robot_id, parcel, x, y).as_bytes());
+                }
+                (None, None) => (),
+                _ => panic!("Either parcel and placed or neither"),
+            }
+        }
+        writer.write("###\n".as_bytes());
+        writer.flush();
+    }
 }
 
 #[derive(Copy, Clone)]
