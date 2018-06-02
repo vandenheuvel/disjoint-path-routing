@@ -1,12 +1,13 @@
-use algorithm::time_graph::TimeGraph;
 use algorithm::Algorithm;
+use algorithm::time_graph::TimeGraph;
 use simulation::demand::Request;
+use simulation::Instructions;
+use simulation::MoveInstruction;
+use simulation::PlacementInstruction;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
+use simulation::RemovalInstruction;
 use simulation::settings::Settings;
-use simulation::simulation::Instructions;
-use simulation::simulation::RemovalInstruction;
-use simulation::simulation::{MoveInstruction, PlacementInstruction};
 use simulation::state::History;
 use simulation::state::RobotState;
 use std::collections::HashMap;
@@ -26,8 +27,8 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
     fn calculate_paths(&mut self, requests: &HashMap<usize, Request>) -> HashMap<usize, Path> {
         let mut paths = HashMap::with_capacity(requests.len());
 
-        for (&id, &Request { source, terminal }) in requests.into_iter() {
-            let path = self.time_graph.find_earliest_path(source, terminal);
+        for (&id, &Request { from, to }) in requests.into_iter() {
+            let path = self.time_graph.find_earliest_path(from, to);
             self.time_graph.remove_path(&path);
             paths.insert(id, path);
         }
@@ -68,14 +69,9 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
         current_time: usize,
     ) {
         let new_path = self.paths.iter().find(
-            |&(
-                parcel,
-                Path {
-                    start_time,
-                    nodes: _,
-                },
-            )| { *start_time == current_time && !paths_started.contains(parcel) },
-        );
+            |&(parcel, Path { start_time, nodes: _, }, )| {
+                *start_time == current_time && !paths_started.contains(parcel)
+            });
         if let Some((
             parcel,
             Path {
@@ -169,11 +165,11 @@ pub struct Path {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use simulation::plan::one_three_rectangle::OneThreeRectangle;
+    use super::*;
 
     #[test]
-    fn test_calculate_paths() {
+    fn test_calculate_paths_single() {
         let plan = OneThreeRectangle::new(3, 3);
         let settings = Settings {
             total_time: 10,
@@ -185,16 +181,82 @@ mod test {
         let mut requests = HashMap::new();
         let source = Vertex { x: 0, y: 1 };
         let terminal = Vertex { x: 2, y: 1 };
-        requests.insert(0, Request { source, terminal });
+        requests.insert(0, Request { from: source, to: terminal });
         let mut algorithm = GreedyShortestPaths::instantiate(&plan, &settings);
-        algorithm.calculate_paths(&requests);
-        assert_eq!(algorithm.paths.len(), 1);
+        let paths = algorithm.calculate_paths(&requests);
+        assert_eq!(paths.len(), 1);
         assert_eq!(
-            algorithm.paths.get(&0),
+            paths.get(&0),
             Some(&Path {
                 start_time: 0,
                 nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
             })
         );
+    }
+
+    #[test]
+    fn test_calculate_paths_two_same() {
+        let plan = OneThreeRectangle::new(3, 3);
+        let mut requests = HashMap::new();
+        let source = Vertex { x: 0, y: 1 };
+        let terminal = Vertex { x: 2, y: 1 };
+        requests.insert(0, Request { from: source, to: terminal });
+        requests.insert(1, Request { from: source, to: terminal });
+        let settings = Settings {
+            total_time: 10,
+            maximum_robots: 2,
+            nr_requests: requests.len() as u64,
+            real_time: false,
+            output_file: None,
+        };
+        let mut algorithm = GreedyShortestPaths::instantiate(&plan, &settings);
+        let paths = algorithm.calculate_paths(&requests);
+        assert_eq!(paths.len(), 2);
+        let expected = vec![
+            Path {
+                start_time: 0,
+                nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+            },
+            Path {
+                start_time: 2,
+                nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+            },
+        ];
+        for id in 0..requests.len() {
+            assert!(expected.contains(paths.get(&id).unwrap()));
+        }
+    }
+
+    #[test]
+    fn test_calculate_paths_two_cross() {
+        let plan = OneThreeRectangle::new(3, 3);
+        let mut requests = HashMap::new();
+        let source = Vertex { x: 0, y: 1 };
+        let terminal = Vertex { x: 2, y: 1 };
+        requests.insert(0, Request { from: source, to: terminal });
+        requests.insert(1, Request { from: source, to: terminal });
+        let settings = Settings {
+            total_time: 10,
+            maximum_robots: 2,
+            nr_requests: requests.len() as u64,
+            real_time: false,
+            output_file: None,
+        };
+        let mut algorithm = GreedyShortestPaths::instantiate(&plan, &settings);
+        let paths = algorithm.calculate_paths(&requests);
+        assert_eq!(paths.len(), 2);
+        let expected = vec![
+            Path {
+                start_time: 0,
+                nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+            },
+            Path {
+                start_time: 2,
+                nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+            },
+        ];
+        for id in 0..requests.len() {
+            assert!(expected.contains(paths.get(&id).unwrap()));
+        }
     }
 }

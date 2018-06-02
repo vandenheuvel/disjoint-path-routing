@@ -1,7 +1,7 @@
 use simulation::demand::Request;
+use simulation::Instructions;
 use simulation::plan::Plan;
 use simulation::settings::Settings;
-use simulation::simulation::Instructions;
 use simulation::state::History;
 use std::collections::HashMap;
 

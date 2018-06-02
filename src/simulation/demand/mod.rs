@@ -10,8 +10,8 @@ pub trait Demand {
     fn generate(&mut self, plan: &Plan, nr_requests: u64) -> Vec<Request>;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Request {
-    pub source: Vertex,
-    pub terminal: Vertex,
+    pub from: Vertex,
+    pub to: Vertex,
 }

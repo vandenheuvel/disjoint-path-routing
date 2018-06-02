@@ -5,7 +5,6 @@ use simulation::plan::Plan;
 use simulation::plan::Vertex;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::u64;
 
 pub struct TimeGraph<'a> {
     plan: &'a Plan,
@@ -25,8 +24,8 @@ impl<'a> TimeGraph<'a> {
         }
     }
     pub fn find_earliest_path(&self, from: Vertex, to: Vertex) -> Path {
-        for start_time in 0..self.total_time.into() {
-            if let Some(path) = self.find_path(start_time.into(), from, to) {
+        for start_time in 0..self.total_time {
+            if let Some(path) = self.find_path(start_time, from, to) {
                 return path;
             }
         }
@@ -122,8 +121,8 @@ type TimeVertex = (usize, Vertex);
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use simulation::plan::one_three_rectangle::OneThreeRectangle;
+    use super::*;
 
     fn new() -> (u64, u64, usize, OneThreeRectangle) {
         let (x_size, y_size, total_time) = (3, 4, 8);
@@ -138,7 +137,7 @@ mod test {
         let time_graph = TimeGraph::from_plan(&plan, total_time);
 
         let nr_vertices = time_graph.vertices.iter().map(HashSet::len).sum::<usize>();
-        assert_eq!(nr_vertices as u64, x_size * y_size * total_time as u64);
+        assert_eq!(nr_vertices as u64, x_size * y_size * (total_time as u64 + 1));
 
         let vertices = &time_graph.vertices;
         // Two arbitrary vertices
@@ -315,6 +314,9 @@ mod test {
 
         assert!(!time_graph.vertices[start_time].contains(&from));
         assert!(!time_graph.vertices[start_time + 1].contains(&from));
+        assert!(time_graph.vertices[start_time + 2].contains(&from));
+
+        assert!(time_graph.vertices[start_time].contains(&to));
         assert!(!time_graph.vertices[start_time + 1].contains(&to));
         assert!(!time_graph.vertices[start_time + 2].contains(&to));
     }

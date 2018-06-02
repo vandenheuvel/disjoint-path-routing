@@ -7,6 +7,7 @@ use std::io;
 use std::io::BufWriter;
 use std::io::Write;
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct State {
     pub robot_states: Vec<RobotState>,
     pub requests: HashMap<usize, Request>,
@@ -34,13 +35,14 @@ impl State {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct RobotState {
     pub robot_id: usize,
     pub parcel_id: Option<usize>,
     pub vertex: Option<Vertex>,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct History {
     pub states: Vec<State>,
     pub calculation_times: Vec<f64>,

@@ -1,8 +1,17 @@
 use algorithm::Algorithm;
 use simulation::demand::Demand;
 use simulation::demand::Request;
+use simulation::IllegalInstructionError;
+use simulation::IllegalMoveError;
+use simulation::IllegalPlacementError;
+use simulation::IllegalRemovalError;
+use simulation::Instructions;
+use simulation::MoveInstruction;
+use simulation::ParcelInstruction;
+use simulation::PlacementInstruction;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
+use simulation::RemovalInstruction;
 use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::state::RobotState;
@@ -62,14 +71,9 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         Ok(self.output_writer = Some(buffered_writer))
     }
     fn set_initial_state(&mut self) {
-        let mut robot_states = Vec::with_capacity(self.settings.maximum_robots);
-        for robot in 0..self.settings.maximum_robots {
-            robot_states.push(RobotState {
-                robot_id: robot,
-                vertex: None,
-                parcel_id: None,
-            });
-        }
+        let robot_states = (0..self.settings.maximum_robots)
+            .map(|robot_id| RobotState { robot_id, vertex: None, parcel_id: None, })
+            .collect();
         let requests = self
             .demand
             .generate(self.plan, self.settings.nr_requests)
@@ -99,7 +103,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         &mut self,
         instructions: Instructions,
     ) -> Result<(), Box<IllegalInstructionError>> {
-        let mut used_vertices = self
+        let used_vertices = self
             .history
             .last_state()
             .robot_states
@@ -359,95 +363,64 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     }
 }
 
-pub struct Instructions {
-    pub movements: Vec<MoveInstruction>,
-    pub placements: Vec<PlacementInstruction>,
-    pub removals: Vec<RemovalInstruction>,
-}
-pub enum Instruction {
-    Move(MoveInstruction),
-    Place(PlacementInstruction),
-    Remove(RemovalInstruction),
-}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use algorithm::greedy_shortest_paths::GreedyShortestPaths;
+    use simulation::plan::one_three_rectangle::OneThreeRectangle;
+    use simulation::demand::uniform::Uniform;
 
-#[derive(Debug, Copy, Clone)]
-pub struct MoveInstruction {
-    pub robot_id: usize,
-    pub vertex: Vertex,
-}
-#[derive(Debug, Copy, Clone)]
-pub struct ParcelInstruction {
-    pub robot_id: usize,
-    pub parcel: usize,
-    pub vertex: Vertex,
-}
-pub type PlacementInstruction = ParcelInstruction;
-pub type RemovalInstruction = ParcelInstruction;
+    #[test]
+    fn test_process_placement_instructions() {
+        let demand = Box::new(<Uniform as Demand>::create(&[1, 2, 3]));
+        let plan = OneThreeRectangle::new(3, 3);
+        let settings = Settings {
+            total_time: 6,
+            maximum_robots: 2,
+            nr_requests: 2,
+            real_time: false,
+            output_file: None,
+        };
+        let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(&plan, &settings));
 
-pub trait IllegalInstructionError {
-    fn instruction(&self) -> Instruction;
-    fn message(&self) -> &String;
-}
-#[derive(Debug)]
-pub struct IllegalMoveError {
-    instruction: MoveInstruction,
-    message: String,
-}
-impl IllegalMoveError {
-    fn from(instruction: MoveInstruction, message: String) -> IllegalMoveError {
-        IllegalMoveError {
-            instruction,
-            message,
-        }
-    }
-}
-impl IllegalInstructionError for IllegalMoveError {
-    fn instruction(&self) -> Instruction {
-        Instruction::Move(self.instruction)
-    }
-    fn message(&self) -> &String {
-        &self.message
-    }
-}
+        let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
+        let mut new_states = vec![RobotState {
+            robot_id: 0,
+            parcel_id: None,
+            vertex: None,
+        }, RobotState {
+            robot_id: 1,
+            parcel_id: None,
+            vertex: None,
+        }];
+        let used_vertices = HashMap::new();
+        let mut newly_used_vertices = HashSet::new();
+        let mut new_requests = HashMap::new();
+        new_requests.insert(0, Request { from: Vertex { x: 0, y: 1, }, to: Vertex { x: 2, y: 1, }, });
+        let expected_new_requests = new_requests.clone();
+        simulation.initialize();
+        assert!(simulation.process_placement_instructions(vec![PlacementInstruction {
+            robot_id: 0,
+            parcel: 0,
+            vertex: Vertex { x: 0, y: 1, },
+        }],
+                                                  &mut new_states,
+                                                  &used_vertices,
+                                                  &mut newly_used_vertices,
+                                                  &mut new_requests).is_ok());
 
-pub struct IllegalPlacementError {
-    instruction: PlacementInstruction,
-    message: String,
-}
-impl IllegalPlacementError {
-    fn from(instruction: PlacementInstruction, message: String) -> IllegalPlacementError {
-        IllegalPlacementError {
-            instruction,
-            message,
-        }
-    }
-}
-impl IllegalInstructionError for IllegalPlacementError {
-    fn instruction(&self) -> Instruction {
-        Instruction::Place(self.instruction)
-    }
-    fn message(&self) -> &String {
-        &self.message
-    }
-}
-
-pub struct IllegalRemovalError {
-    instruction: RemovalInstruction,
-    message: String,
-}
-impl IllegalRemovalError {
-    fn from(instruction: RemovalInstruction, message: String) -> IllegalRemovalError {
-        IllegalRemovalError {
-            instruction,
-            message,
-        }
-    }
-}
-impl IllegalInstructionError for IllegalRemovalError {
-    fn instruction(&self) -> Instruction {
-        Instruction::Remove(self.instruction)
-    }
-    fn message(&self) -> &String {
-        &self.message
+        let expected_new_states = vec![RobotState {
+            robot_id: 0,
+            parcel_id: Some(0),
+            vertex: Some(Vertex { x: 0, y: 1, }),
+        }, RobotState {
+            robot_id: 1,
+            parcel_id: None,
+            vertex: None,
+        }];
+        let expected_newly_used_vertices = vec![Vertex { x: 0, y: 1, }].into_iter().collect();
+        assert_eq!(new_states, expected_new_states);
+        assert_eq!(newly_used_vertices, expected_newly_used_vertices);
+        assert_eq!(new_requests, expected_new_requests);
     }
 }
