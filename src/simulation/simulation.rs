@@ -16,12 +16,12 @@ use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::state::RobotState;
 use simulation::state::State;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io;
 use std::io::BufWriter;
+use fnv::FnvHashMap;
+use fnv::FnvHashSet;
 
 pub struct Simulation<'a, 'p, 's> {
     algorithm: Box<Algorithm<'p, 's> + 'a>,
@@ -110,8 +110,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             .iter()
             .filter(|robot| robot.vertex.is_some())
             .map(|robot| (robot.vertex.unwrap(), robot.robot_id))
-            .collect::<HashMap<_, _>>();
-        let mut newly_used_vertices = HashSet::new();
+            .collect::<FnvHashMap<_, _>>();
+        let mut newly_used_vertices = FnvHashSet::default();
 
         let mut new_states = self.history.last_state().robot_states.clone();
         let mut new_requests = self.history.last_state().requests.clone();
@@ -145,8 +145,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         &self,
         move_instructions: Vec<MoveInstruction>,
         new_states: &mut Vec<RobotState>,
-        used_vertices: &HashMap<Vertex, usize>,
-        newly_used_vertices: &mut HashSet<Vertex>,
+        used_vertices: &FnvHashMap<Vertex, usize>,
+        newly_used_vertices: &mut FnvHashSet<Vertex>,
     ) -> Result<(), IllegalMoveError> {
         for instruction in move_instructions {
             if let Some(error) = self.check_for_move_instruction_error(
@@ -174,8 +174,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     fn check_for_move_instruction_error(
         &self,
         instruction: MoveInstruction,
-        used_vertices: &HashMap<Vertex, usize>,
-        newly_used_vertices: &HashSet<Vertex>,
+        used_vertices: &FnvHashMap<Vertex, usize>,
+        newly_used_vertices: &FnvHashSet<Vertex>,
     ) -> Option<IllegalMoveError> {
         let MoveInstruction { robot_id, vertex } = instruction;
 
@@ -218,9 +218,9 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         &self,
         placement_instructions: Vec<PlacementInstruction>,
         new_states: &mut Vec<RobotState>,
-        used_vertices: &HashMap<Vertex, usize>,
-        newly_used_vertices: &mut HashSet<Vertex>,
-        new_requests: &mut HashMap<usize, Request>,
+        used_vertices: &FnvHashMap<Vertex, usize>,
+        newly_used_vertices: &mut FnvHashSet<Vertex>,
+        new_requests: &mut FnvHashMap<usize, Request>,
     ) -> Result<(), IllegalPlacementError> {
         for instruction in placement_instructions {
             if let Some(error) = self.check_for_placement_instruction_error(
@@ -250,9 +250,9 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     fn check_for_placement_instruction_error(
         &self,
         instruction: PlacementInstruction,
-        used_vertices: &HashMap<Vertex, usize>,
-        newly_used_vertices: &mut HashSet<Vertex>,
-        new_requests: &mut HashMap<usize, Request>,
+        used_vertices: &FnvHashMap<Vertex, usize>,
+        newly_used_vertices: &mut FnvHashSet<Vertex>,
+        new_requests: &mut FnvHashMap<usize, Request>,
     ) -> Option<IllegalPlacementError> {
         let PlacementInstruction {
             robot_id,
@@ -291,8 +291,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         &self,
         removal_instructions: Vec<RemovalInstruction>,
         new_states: &mut Vec<RobotState>,
-        new_requests: &mut HashMap<usize, Request>,
-        used_vertices: &mut HashSet<Vertex>,
+        new_requests: &mut FnvHashMap<usize, Request>,
+        used_vertices: &mut FnvHashSet<Vertex>,
     ) -> Result<(), IllegalRemovalError> {
         for instruction in removal_instructions {
             if let Some(error) = self.check_for_removal_instruction_error(instruction) {
@@ -393,9 +393,9 @@ mod test {
             parcel_id: None,
             vertex: None,
         }];
-        let used_vertices = HashMap::new();
-        let mut newly_used_vertices = HashSet::new();
-        let mut new_requests = HashMap::new();
+        let used_vertices = FnvHashMap::default();
+        let mut newly_used_vertices = FnvHashSet::default();
+        let mut new_requests = FnvHashMap::default();
         new_requests.insert(0, Request { from: Vertex { x: 0, y: 1, }, to: Vertex { x: 2, y: 1, }, });
         let expected_new_requests = new_requests.clone();
         simulation.initialize();

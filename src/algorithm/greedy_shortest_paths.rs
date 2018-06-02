@@ -10,8 +10,8 @@ use simulation::RemovalInstruction;
 use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::state::RobotState;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use fnv::FnvHashMap;
+use fnv::FnvHashSet;
 
 pub struct GreedyShortestPaths<'p, 's> {
     // Initialized at instantiation
@@ -20,12 +20,12 @@ pub struct GreedyShortestPaths<'p, 's> {
 
     // After
     /// One for each request => Path
-    paths: HashMap<usize, Path>,
+    paths: FnvHashMap<usize, Path>,
 }
 
 impl<'p, 's> GreedyShortestPaths<'p, 's> {
-    fn calculate_paths(&mut self, requests: &HashMap<usize, Request>) -> HashMap<usize, Path> {
-        let mut paths = HashMap::with_capacity(requests.len());
+    fn calculate_paths(&mut self, requests: &FnvHashMap<usize, Request>) -> FnvHashMap<usize, Path> {
+        let mut paths = FnvHashMap::with_capacity_and_hasher(requests.len(), Default::default());
 
         for (&id, &Request { from, to }) in requests.into_iter() {
             let path = self.time_graph.find_earliest_path(from, to);
@@ -64,7 +64,7 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
     fn place_new_parcel(
         &self,
         robot_id: usize,
-        paths_started: &mut HashSet<usize>,
+        paths_started: &mut FnvHashSet<usize>,
         instructions: &mut Instructions,
         current_time: usize,
     ) {
@@ -92,7 +92,7 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
         &self,
         robot_state: &RobotState,
         instructions: &mut Instructions,
-        paths_started: &mut HashSet<usize>,
+        paths_started: &mut FnvHashSet<usize>,
         current_time: usize,
     ) {
         match robot_state.parcel_id {
@@ -126,10 +126,10 @@ impl<'p, 's> Algorithm<'p, 's> for GreedyShortestPaths<'p, 's> {
             time_graph,
             settings,
 
-            paths: HashMap::new(),
+            paths: FnvHashMap::default(),
         }
     }
-    fn initialize(&mut self, requests: &HashMap<usize, Request>) {
+    fn initialize(&mut self, requests: &FnvHashMap<usize, Request>) {
         debug_assert!(requests.len() > 0);
 
         self.paths = self.calculate_paths(requests);
@@ -137,7 +137,7 @@ impl<'p, 's> Algorithm<'p, 's> for GreedyShortestPaths<'p, 's> {
     fn next_step(&mut self, history: &History) -> Instructions {
         debug_assert!(self.paths.len() > 0);
 
-        let mut paths_started = HashSet::new();
+        let mut paths_started = FnvHashSet::default();
         let mut instructions = Instructions {
             movements: Vec::new(),
             placements: Vec::new(),
@@ -178,7 +178,7 @@ mod test {
             real_time: false,
             output_file: None,
         };
-        let mut requests = HashMap::new();
+        let mut requests = FnvHashMap::default();
         let source = Vertex { x: 0, y: 1 };
         let terminal = Vertex { x: 2, y: 1 };
         requests.insert(0, Request { from: source, to: terminal });
@@ -197,7 +197,7 @@ mod test {
     #[test]
     fn test_calculate_paths_two_same() {
         let plan = OneThreeRectangle::new(3, 3);
-        let mut requests = HashMap::new();
+        let mut requests = FnvHashMap::default();
         let source = Vertex { x: 0, y: 1 };
         let terminal = Vertex { x: 2, y: 1 };
         requests.insert(0, Request { from: source, to: terminal });
@@ -230,7 +230,7 @@ mod test {
     #[test]
     fn test_calculate_paths_two_cross() {
         let plan = OneThreeRectangle::new(3, 3);
-        let mut requests = HashMap::new();
+        let mut requests = FnvHashMap::default();
         let source = Vertex { x: 0, y: 1 };
         let terminal = Vertex { x: 2, y: 1 };
         requests.insert(0, Request { from: source, to: terminal });
