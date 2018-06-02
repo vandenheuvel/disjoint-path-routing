@@ -1,6 +1,14 @@
 use algorithm::Algorithm;
+use fnv::FnvHashMap;
+use fnv::FnvHashSet;
 use simulation::demand::Demand;
 use simulation::demand::Request;
+use simulation::plan::Plan;
+use simulation::plan::Vertex;
+use simulation::settings::Settings;
+use simulation::state::History;
+use simulation::state::RobotState;
+use simulation::state::State;
 use simulation::IllegalInstructionError;
 use simulation::IllegalMoveError;
 use simulation::IllegalPlacementError;
@@ -9,19 +17,11 @@ use simulation::Instructions;
 use simulation::MoveInstruction;
 use simulation::ParcelInstruction;
 use simulation::PlacementInstruction;
-use simulation::plan::Plan;
-use simulation::plan::Vertex;
 use simulation::RemovalInstruction;
-use simulation::settings::Settings;
-use simulation::state::History;
-use simulation::state::RobotState;
-use simulation::state::State;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io;
 use std::io::BufWriter;
-use fnv::FnvHashMap;
-use fnv::FnvHashSet;
 
 pub struct Simulation<'a, 'p, 's> {
     algorithm: Box<Algorithm<'p, 's> + 'a>,
@@ -72,7 +72,11 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     }
     fn set_initial_state(&mut self) {
         let robot_states = (0..self.settings.maximum_robots)
-            .map(|robot_id| RobotState { robot_id, vertex: None, parcel_id: None, })
+            .map(|robot_id| RobotState {
+                robot_id,
+                vertex: None,
+                parcel_id: None,
+            })
             .collect();
         let requests = self
             .demand
@@ -367,8 +371,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 mod test {
     use super::*;
     use algorithm::greedy_shortest_paths::GreedyShortestPaths;
-    use simulation::plan::one_three_rectangle::OneThreeRectangle;
     use simulation::demand::uniform::Uniform;
+    use simulation::plan::one_three_rectangle::OneThreeRectangle;
 
     #[test]
     fn test_process_placement_instructions() {
@@ -381,44 +385,64 @@ mod test {
             real_time: false,
             output_file: None,
         };
-        let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(&plan, &settings));
+        let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(
+            &plan, &settings,
+        ));
 
         let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
-        let mut new_states = vec![RobotState {
-            robot_id: 0,
-            parcel_id: None,
-            vertex: None,
-        }, RobotState {
-            robot_id: 1,
-            parcel_id: None,
-            vertex: None,
-        }];
+        let mut new_states = vec![
+            RobotState {
+                robot_id: 0,
+                parcel_id: None,
+                vertex: None,
+            },
+            RobotState {
+                robot_id: 1,
+                parcel_id: None,
+                vertex: None,
+            },
+        ];
         let used_vertices = FnvHashMap::default();
         let mut newly_used_vertices = FnvHashSet::default();
         let mut new_requests = FnvHashMap::default();
-        new_requests.insert(0, Request { from: Vertex { x: 0, y: 1, }, to: Vertex { x: 2, y: 1, }, });
+        new_requests.insert(
+            0,
+            Request {
+                from: Vertex { x: 0, y: 1 },
+                to: Vertex { x: 2, y: 1 },
+            },
+        );
         let expected_new_requests = new_requests.clone();
         simulation.initialize();
-        assert!(simulation.process_placement_instructions(vec![PlacementInstruction {
-            robot_id: 0,
-            parcel: 0,
-            vertex: Vertex { x: 0, y: 1, },
-        }],
-                                                  &mut new_states,
-                                                  &used_vertices,
-                                                  &mut newly_used_vertices,
-                                                  &mut new_requests).is_ok());
+        assert!(
+            simulation
+                .process_placement_instructions(
+                    vec![PlacementInstruction {
+                        robot_id: 0,
+                        parcel: 0,
+                        vertex: Vertex { x: 0, y: 1 },
+                    }],
+                    &mut new_states,
+                    &used_vertices,
+                    &mut newly_used_vertices,
+                    &mut new_requests,
+                )
+                .is_ok()
+        );
 
-        let expected_new_states = vec![RobotState {
-            robot_id: 0,
-            parcel_id: Some(0),
-            vertex: Some(Vertex { x: 0, y: 1, }),
-        }, RobotState {
-            robot_id: 1,
-            parcel_id: None,
-            vertex: None,
-        }];
-        let expected_newly_used_vertices = vec![Vertex { x: 0, y: 1, }].into_iter().collect();
+        let expected_new_states = vec![
+            RobotState {
+                robot_id: 0,
+                parcel_id: Some(0),
+                vertex: Some(Vertex { x: 0, y: 1 }),
+            },
+            RobotState {
+                robot_id: 1,
+                parcel_id: None,
+                vertex: None,
+            },
+        ];
+        let expected_newly_used_vertices = vec![Vertex { x: 0, y: 1 }].into_iter().collect();
         assert_eq!(new_states, expected_new_states);
         assert_eq!(newly_used_vertices, expected_newly_used_vertices);
         assert_eq!(new_requests, expected_new_requests);

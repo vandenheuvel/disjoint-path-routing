@@ -121,8 +121,8 @@ type TimeVertex = (usize, Vertex);
 
 #[cfg(test)]
 mod test {
-    use simulation::plan::one_three_rectangle::OneThreeRectangle;
     use super::*;
+    use simulation::plan::one_three_rectangle::OneThreeRectangle;
 
     fn new() -> (u64, u64, usize, OneThreeRectangle) {
         let (x_size, y_size, total_time) = (3, 4, 8);
@@ -137,7 +137,10 @@ mod test {
         let time_graph = TimeGraph::from_plan(&plan, total_time);
 
         let nr_vertices = time_graph.vertices.iter().map(HashSet::len).sum::<usize>();
-        assert_eq!(nr_vertices as u64, x_size * y_size * (total_time as u64 + 1));
+        assert_eq!(
+            nr_vertices as u64,
+            x_size * y_size * (total_time as u64 + 1)
+        );
 
         let vertices = &time_graph.vertices;
         // Two arbitrary vertices

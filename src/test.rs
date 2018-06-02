@@ -1,7 +1,7 @@
-use algorithm::Algorithm;
 use algorithm::greedy_shortest_paths::GreedyShortestPaths;
-use simulation::demand::Demand;
+use algorithm::Algorithm;
 use simulation::demand::uniform::Uniform;
+use simulation::demand::Demand;
 use simulation::plan::one_three_rectangle::OneThreeRectangle;
 use simulation::settings::Settings;
 use simulation::simulation::Simulation;
@@ -14,7 +14,7 @@ fn it_works() {
         maximum_robots: 20,
         nr_requests: 60,
         real_time: false,
-//        output_file: Some("/tmp/disjoint".to_string()),
+        //        output_file: Some("/tmp/disjoint".to_string()),
         output_file: None,
     };
     let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(

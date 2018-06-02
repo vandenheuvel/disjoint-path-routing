@@ -24,7 +24,10 @@ impl Demand for Uniform {
             let source = *self.rng.choose(&sources).unwrap();
             let terminal = *self.rng.choose(&terminals).unwrap();
 
-            requests.push(Request { from: source, to: terminal });
+            requests.push(Request {
+                from: source,
+                to: terminal,
+            });
         }
 
         requests

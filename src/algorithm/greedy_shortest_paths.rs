@@ -1,17 +1,17 @@
-use algorithm::Algorithm;
 use algorithm::time_graph::TimeGraph;
+use algorithm::Algorithm;
+use fnv::FnvHashMap;
+use fnv::FnvHashSet;
 use simulation::demand::Request;
-use simulation::Instructions;
-use simulation::MoveInstruction;
-use simulation::PlacementInstruction;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
-use simulation::RemovalInstruction;
 use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::state::RobotState;
-use fnv::FnvHashMap;
-use fnv::FnvHashSet;
+use simulation::Instructions;
+use simulation::MoveInstruction;
+use simulation::PlacementInstruction;
+use simulation::RemovalInstruction;
 
 pub struct GreedyShortestPaths<'p, 's> {
     // Initialized at instantiation
@@ -24,7 +24,10 @@ pub struct GreedyShortestPaths<'p, 's> {
 }
 
 impl<'p, 's> GreedyShortestPaths<'p, 's> {
-    fn calculate_paths(&mut self, requests: &FnvHashMap<usize, Request>) -> FnvHashMap<usize, Path> {
+    fn calculate_paths(
+        &mut self,
+        requests: &FnvHashMap<usize, Request>,
+    ) -> FnvHashMap<usize, Path> {
         let mut paths = FnvHashMap::with_capacity_and_hasher(requests.len(), Default::default());
 
         for (&id, &Request { from, to }) in requests.into_iter() {
@@ -69,9 +72,14 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
         current_time: usize,
     ) {
         let new_path = self.paths.iter().find(
-            |&(parcel, Path { start_time, nodes: _, }, )| {
-                *start_time == current_time && !paths_started.contains(parcel)
-            });
+            |&(
+                parcel,
+                Path {
+                    start_time,
+                    nodes: _,
+                },
+            )| { *start_time == current_time && !paths_started.contains(parcel) },
+        );
         if let Some((
             parcel,
             Path {
@@ -165,8 +173,8 @@ pub struct Path {
 
 #[cfg(test)]
 mod test {
-    use simulation::plan::one_three_rectangle::OneThreeRectangle;
     use super::*;
+    use simulation::plan::one_three_rectangle::OneThreeRectangle;
 
     #[test]
     fn test_calculate_paths_single() {
@@ -181,7 +189,13 @@ mod test {
         let mut requests = FnvHashMap::default();
         let source = Vertex { x: 0, y: 1 };
         let terminal = Vertex { x: 2, y: 1 };
-        requests.insert(0, Request { from: source, to: terminal });
+        requests.insert(
+            0,
+            Request {
+                from: source,
+                to: terminal,
+            },
+        );
         let mut algorithm = GreedyShortestPaths::instantiate(&plan, &settings);
         let paths = algorithm.calculate_paths(&requests);
         assert_eq!(paths.len(), 1);
@@ -200,8 +214,20 @@ mod test {
         let mut requests = FnvHashMap::default();
         let source = Vertex { x: 0, y: 1 };
         let terminal = Vertex { x: 2, y: 1 };
-        requests.insert(0, Request { from: source, to: terminal });
-        requests.insert(1, Request { from: source, to: terminal });
+        requests.insert(
+            0,
+            Request {
+                from: source,
+                to: terminal,
+            },
+        );
+        requests.insert(
+            1,
+            Request {
+                from: source,
+                to: terminal,
+            },
+        );
         let settings = Settings {
             total_time: 10,
             maximum_robots: 2,
@@ -233,8 +259,20 @@ mod test {
         let mut requests = FnvHashMap::default();
         let source = Vertex { x: 0, y: 1 };
         let terminal = Vertex { x: 2, y: 1 };
-        requests.insert(0, Request { from: source, to: terminal });
-        requests.insert(1, Request { from: source, to: terminal });
+        requests.insert(
+            0,
+            Request {
+                from: source,
+                to: terminal,
+            },
+        );
+        requests.insert(
+            1,
+            Request {
+                from: source,
+                to: terminal,
+            },
+        );
         let settings = Settings {
             total_time: 10,
             maximum_robots: 2,

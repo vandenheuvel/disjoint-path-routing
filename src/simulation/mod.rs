@@ -7,7 +7,6 @@ pub mod simulation;
 pub mod state;
 pub mod statistics;
 
-
 pub struct Instructions {
     pub movements: Vec<MoveInstruction>,
     pub placements: Vec<PlacementInstruction>,

@@ -1,9 +1,9 @@
+use fnv::FnvHashMap;
 use simulation::demand::Request;
-use simulation::Instructions;
 use simulation::plan::Plan;
 use simulation::settings::Settings;
 use simulation::state::History;
-use fnv::FnvHashMap;
+use simulation::Instructions;
 
 pub mod greedy_shortest_paths;
 pub mod time_graph;

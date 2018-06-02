@@ -1,3 +1,4 @@
+use fnv::FnvHashMap;
 use simulation::demand::Request;
 use simulation::plan::Vertex;
 use simulation::statistics::Statistics;
@@ -5,7 +6,6 @@ use std::fs::File;
 use std::io;
 use std::io::BufWriter;
 use std::io::Write;
-use fnv::FnvHashMap;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct State {
