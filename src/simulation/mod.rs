@@ -36,17 +36,20 @@ pub type RemovalInstruction = ParcelInstruction;
 pub trait IllegalInstructionError {
     fn instruction(&self) -> Instruction;
     fn message(&self) -> &String;
+    fn time(&self) -> usize;
 }
 #[derive(Debug)]
 pub struct IllegalMoveError {
     instruction: MoveInstruction,
     message: String,
+    time: usize,
 }
 impl IllegalMoveError {
-    fn from(instruction: MoveInstruction, message: String) -> IllegalMoveError {
+    fn from(instruction: MoveInstruction, message: String, time: usize) -> IllegalMoveError {
         IllegalMoveError {
             instruction,
             message,
+            time,
         }
     }
 }
@@ -57,17 +60,22 @@ impl IllegalInstructionError for IllegalMoveError {
     fn message(&self) -> &String {
         &self.message
     }
+    fn time(&self) -> usize {
+        self.time
+    }
 }
 
 pub struct IllegalPlacementError {
     instruction: PlacementInstruction,
     message: String,
+    time: usize,
 }
 impl IllegalPlacementError {
-    fn from(instruction: PlacementInstruction, message: String) -> IllegalPlacementError {
+    fn from(instruction: PlacementInstruction, message: String, time: usize) -> IllegalPlacementError {
         IllegalPlacementError {
             instruction,
             message,
+            time,
         }
     }
 }
@@ -78,17 +86,22 @@ impl IllegalInstructionError for IllegalPlacementError {
     fn message(&self) -> &String {
         &self.message
     }
+    fn time(&self) -> usize {
+        self.time
+    }
 }
 
 pub struct IllegalRemovalError {
     instruction: RemovalInstruction,
     message: String,
+    time: usize,
 }
 impl IllegalRemovalError {
-    fn from(instruction: RemovalInstruction, message: String) -> IllegalRemovalError {
+    fn from(instruction: RemovalInstruction, message: String, time: usize) -> IllegalRemovalError {
         IllegalRemovalError {
             instruction,
             message,
+            time,
         }
     }
 }
@@ -98,5 +111,8 @@ impl IllegalInstructionError for IllegalRemovalError {
     }
     fn message(&self) -> &String {
         &self.message
+    }
+    fn time(&self) -> usize {
+        self.time
     }
 }

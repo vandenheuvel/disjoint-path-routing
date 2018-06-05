@@ -12,6 +12,18 @@ pub trait Algorithm<'p, 's> {
     fn instantiate(plan: &'p impl Plan, settings: &'s Settings) -> Self
     where
         Self: Sized;
-    fn initialize(&mut self, requests: &FnvHashMap<usize, Request>);
+    fn initialize(&mut self, requests: &FnvHashMap<usize, Request>) -> Result<(), NoSolutionError>;
     fn next_step(&mut self, history: &History) -> Instructions;
+}
+
+pub struct NoSolutionError {
+    message: String,
+}
+
+impl NoSolutionError {
+    fn new(message: String) -> NoSolutionError {
+        NoSolutionError {
+            message,
+        }
+    }
 }

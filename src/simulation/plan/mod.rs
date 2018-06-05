@@ -8,6 +8,7 @@ pub mod one_three_rectangle;
 
 pub trait Plan {
     fn vertices(&self) -> Vec<Vertex>;
+    fn contains(&self, vertex: &Vertex) -> bool;
     fn sources(&self) -> Vec<Vertex>;
     fn terminals(&self) -> Vec<Vertex>;
     fn edges(&self) -> Vec<UndirectedEdge>;
@@ -65,8 +66,7 @@ pub struct Vertex {
     pub y: u64,
 }
 impl Vertex {
-    pub fn distance(&self, other: Vertex) -> i64 {
-        ((self.x.max(other.x) - self.x.min(other.x)) + (self.y.max(other.y) - self.y.min(other.y)))
-            as i64
+    pub fn distance(&self, other: Vertex) -> u64 {
+        (self.x.max(other.x) - self.x.min(other.x)) + (self.y.max(other.y) - self.y.min(other.y))
     }
 }

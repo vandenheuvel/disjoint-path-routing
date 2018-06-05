@@ -65,6 +65,6 @@ impl History {
         self.last_state().robot_states[robot]
     }
     pub fn time(&self) -> usize {
-        self.states.len() - 1
+        self.states.len()
     }
 }

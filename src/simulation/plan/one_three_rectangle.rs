@@ -30,6 +30,9 @@ impl Plan for OneThreeRectangle {
     fn vertices(&self) -> Vec<Vertex> {
         Rectangle::vertices(self)
     }
+    fn contains(&self, vertex: &Vertex) -> bool {
+        vertex.x < self.x_size && vertex.y < self.y_size
+    }
     fn sources(&self) -> Vec<Vertex> {
         (1..self.y_size() - 1).map(|y| Vertex { x: 0, y }).collect()
     }

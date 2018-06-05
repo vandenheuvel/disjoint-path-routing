@@ -7,24 +7,28 @@ use simulation::settings::Settings;
 use simulation::simulation::Simulation;
 
 #[test]
-fn it_works() {
-    let plan = OneThreeRectangle::new(25, 25);
+fn integration() {
+    let plan = OneThreeRectangle::new(3, 3);
     let settings = Settings {
-        total_time: 200,
-        maximum_robots: 20,
-        nr_requests: 60,
+        total_time: 5,
+        maximum_robots: 1,
+        nr_requests: 1,
         real_time: false,
-        //        output_file: Some("/tmp/disjoint".to_string()),
         output_file: None,
     };
     let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(
         &plan, &settings,
     ));
-    let demand = Box::new(<Uniform as Demand>::create(&[1, 2, 3]));
+    let demand = Box::new(<Uniform as Demand>::create(&[1, 3]));
 
     let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
-    simulation.initialize();
-    if let Err(error) = simulation.run() {
-        println!("{:?}: {:?}", error.message(), error.instruction());
+    simulation.initialize().ok().unwrap();
+    let result = simulation.run();
+
+
+    let is_ok = result.is_ok();
+    if let Err(error) = result {
+        println!("{:?}: {:?} at time {}", error.message(), error.instruction(), error.time());
     };
+    assert!(is_ok);
 }
