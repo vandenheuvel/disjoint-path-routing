@@ -1,18 +1,18 @@
 use algorithm::time_graph::TimeGraph;
 use algorithm::Algorithm;
+use algorithm::NoSolutionError;
 use fnv::FnvHashMap;
+use priority_queue::PriorityQueue;
 use simulation::demand::Request;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
 use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::Instructions;
-use priority_queue::PriorityQueue;
-use std::cmp::Reverse;
-use simulation::PlacementInstruction;
 use simulation::MoveInstruction;
+use simulation::PlacementInstruction;
 use simulation::RemovalInstruction;
-use algorithm::NoSolutionError;
+use std::cmp::Reverse;
 
 pub struct GreedyShortestPaths<'p, 's> {
     // Initialized at instantiation
@@ -28,14 +28,17 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
         &mut self,
         requests: &FnvHashMap<usize, Request>,
     ) -> Result<FnvHashMap<usize, Vec<(usize, Path)>>, NoSolutionError> {
-        let mut paths = FnvHashMap::with_capacity_and_hasher(self.settings.maximum_robots, Default::default());
+        let mut paths =
+            FnvHashMap::with_capacity_and_hasher(self.settings.maximum_robots, Default::default());
         let mut robot_availability = (0..self.settings.maximum_robots)
             .map(|robot| (robot, Reverse(1 /* We start at time 1 */ as usize)))
             .collect::<PriorityQueue<_, _>>();
 
         for (&id, &Request { from, to }) in requests.into_iter() {
             let (&robot, &Reverse(earliest_available)) = robot_availability.peek().unwrap();
-            let possible_path = self.time_graph.find_earliest_path_after(earliest_available, from, to);
+            let possible_path =
+                self.time_graph
+                    .find_earliest_path_after(earliest_available, from, to);
             if let Some(path) = possible_path {
                 self.time_graph.remove_path(&path);
                 robot_availability.push(robot, Reverse(path.start_time + (path.length() - 1) + 2));
@@ -44,13 +47,18 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
                 }
                 paths.get_mut(&robot).unwrap().push((id, path));
             } else {
-                return Err(NoSolutionError::new(format!("No path found for request {}", id).to_string()));
+                return Err(NoSolutionError::new(
+                    format!("No path found for request {}", id).to_string(),
+                ));
             }
         }
 
         Ok(paths)
     }
-    fn sort_paths_by_robot(&mut self, mut paths: FnvHashMap<usize, Vec<(usize, Path)>>) -> Vec<Vec<(usize, Path)>> {
+    fn sort_paths_by_robot(
+        &mut self,
+        mut paths: FnvHashMap<usize, Vec<(usize, Path)>>,
+    ) -> Vec<Vec<(usize, Path)>> {
         for robot in 0..self.settings.maximum_robots {
             if !paths.contains_key(&robot) {
                 paths.insert(robot, Vec::with_capacity(0));
@@ -58,7 +66,10 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
         }
         let mut lookup = paths.into_iter().collect::<Vec<_>>();
         lookup.sort_by_key(|&(robot, _)| robot);
-        let mut lookup = lookup.into_iter().map(|(_, paths)| paths).collect::<Vec<_>>();
+        let mut lookup = lookup
+            .into_iter()
+            .map(|(_, paths)| paths)
+            .collect::<Vec<_>>();
         for paths in lookup.iter_mut() {
             paths.sort_by_key(|&(_, ref path)| path.start_time);
         }
@@ -69,26 +80,30 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
     fn get_robot_instruction(&self, robot_id: usize, time: usize, instructions: &mut Instructions) {
         debug_assert!(self.paths.len() > 0);
 
-        let previous_state = self.paths[robot_id]
-            .iter()
-            .find(|&(_, path)|
-                path.start_time <= time - 1 && time - 1 <= path.start_time + path.length() - 1);
-        let current_state = self.paths[robot_id]
-            .iter()
-            .find(|&(_, path)|
-                path.start_time <= time && time <= path.start_time + path.length() - 1);
+        let previous_state = self.paths[robot_id].iter().find(|&(_, path)| {
+            path.start_time <= time - 1 && time - 1 <= path.start_time + path.length() - 1
+        });
+        let current_state = self.paths[robot_id].iter().find(|&(_, path)| {
+            path.start_time <= time && time <= path.start_time + path.length() - 1
+        });
         match (previous_state, current_state) {
-            (None, Some(&(parcel, Path { start_time, ref nodes, }))) => {
+            (None, Some(&(parcel, Path { start_time, ref nodes, }, )), ) => {
                 instructions.placements.push(PlacementInstruction {
                     robot_id,
                     parcel,
                     vertex: nodes[time - start_time],
                 });
-            },
+            }
             (Some(then), Some(now)) => {
                 debug_assert!(then == now);
 
-                let &(_, Path { start_time, ref nodes, }) = now;
+                let &(
+                    _,
+                    Path {
+                        start_time,
+                        ref nodes,
+                    },
+                ) = now;
 
                 let new_node = nodes[time - start_time];
                 let previous_node = nodes[time - start_time - 1];
@@ -100,14 +115,14 @@ impl<'p, 's> GreedyShortestPaths<'p, 's> {
                         vertex: new_node,
                     });
                 }
-            },
-            (Some(&(parcel, Path { start_time, ref nodes, })), None) => {
+            }
+            (Some(&(parcel, Path { start_time, ref nodes, }, )), None, ) => {
                 instructions.removals.push(RemovalInstruction {
                     parcel,
                     robot_id,
                     vertex: nodes[time - start_time - 1],
                 });
-            },
+            }
             (None, None) => (),
         }
     }
@@ -188,10 +203,16 @@ mod test {
         let paths = algorithm.calculate_paths(&requests).ok().unwrap();
         let paths = algorithm.sort_paths_by_robot(paths);
         assert_eq!(paths.len(), 1);
-        assert_eq!(paths[0], vec![(0, Path {
-            start_time: 1,
-            nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
-        })]);
+        assert_eq!(
+            paths[0],
+            vec![(
+                0,
+                Path {
+                    start_time: 1,
+                    nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+                },
+            )]
+        );
     }
 
     #[test]
@@ -209,9 +230,9 @@ mod test {
         ));
         let mut requests = FnvHashMap::default();
         let parcel_id = 0;
-        let from = Vertex { x: 0, y: 3, };
-        let to = Vertex { x: 1, y: 0, };
-        requests.insert(parcel_id, Request { from, to, });
+        let from = Vertex { x: 0, y: 3 };
+        let to = Vertex { x: 1, y: 0 };
+        requests.insert(parcel_id, Request { from, to });
 
         let paths = algorithm.calculate_paths(&requests).ok().unwrap();
         let paths = algorithm.sort_paths_by_robot(paths);
@@ -254,14 +275,20 @@ mod test {
         let paths = algorithm.calculate_paths(&requests).ok().unwrap();
         let paths = algorithm.sort_paths_by_robot(paths);
         let expected = vec![
-            vec![(1, Path {
-                start_time: 1,
-                nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
-            })],
-            vec![(0, Path {
-                start_time: 3,
-                nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
-            })],
+            vec![(
+                1,
+                Path {
+                    start_time: 1,
+                    nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+                },
+            )],
+            vec![(
+                0,
+                Path {
+                    start_time: 3,
+                    nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+                },
+            )],
         ];
         assert_eq!(paths, expected);
     }
@@ -297,14 +324,20 @@ mod test {
         let paths = algorithm.calculate_paths(&requests).ok().unwrap();
         let paths = algorithm.sort_paths_by_robot(paths);
         let expected = vec![
-            vec![(1, Path {
-            start_time: 1,
-            nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
-            })],
-            vec![(0, Path {
-                start_time: 3,
-                nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
-            })],
+            vec![(
+                1,
+                Path {
+                    start_time: 1,
+                    nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+                },
+            )],
+            vec![(
+                0,
+                Path {
+                    start_time: 3,
+                    nodes: vec![source, Vertex { x: 1, y: 1 }, terminal],
+                },
+            )],
         ];
         assert_eq!(paths, expected);
     }

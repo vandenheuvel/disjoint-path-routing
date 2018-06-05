@@ -25,10 +25,14 @@ fn integration() {
     simulation.initialize().ok().unwrap();
     let result = simulation.run();
 
-
     let is_ok = result.is_ok();
     if let Err(error) = result {
-        println!("{:?}: {:?} at time {}", error.message(), error.instruction(), error.time());
+        println!(
+            "{:?}: {:?} at time {}",
+            error.message(),
+            error.instruction(),
+            error.time()
+        );
     };
     assert!(is_ok);
 }

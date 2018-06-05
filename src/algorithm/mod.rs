@@ -22,8 +22,6 @@ pub struct NoSolutionError {
 
 impl NoSolutionError {
     fn new(message: String) -> NoSolutionError {
-        NoSolutionError {
-            message,
-        }
+        NoSolutionError { message }
     }
 }

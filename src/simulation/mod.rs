@@ -71,7 +71,11 @@ pub struct IllegalPlacementError {
     time: usize,
 }
 impl IllegalPlacementError {
-    fn from(instruction: PlacementInstruction, message: String, time: usize) -> IllegalPlacementError {
+    fn from(
+        instruction: PlacementInstruction,
+        message: String,
+        time: usize,
+    ) -> IllegalPlacementError {
         IllegalPlacementError {
             instruction,
             message,

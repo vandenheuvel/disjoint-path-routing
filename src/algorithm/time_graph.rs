@@ -1,12 +1,12 @@
 use algorithm::greedy_shortest_paths::Path;
+use fnv::FnvHashSet;
 use itertools::repeat_n;
 use priority_queue::PriorityQueue;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use fnv::FnvHashSet;
-use std::cmp::Reverse;
 
 pub struct TimeGraph<'a> {
     plan: &'a Plan,

@@ -338,7 +338,10 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         if !self.plan.contains(&instruction.vertex) {
             return Some(IllegalRemovalError::from(
                 instruction,
-                format!("Vertex {:?} not part of currently active plan", instruction.vertex, ).to_string(),
+                format!(
+                    "Vertex {:?} not part of currently active plan",
+                    instruction.vertex,
+                ).to_string(),
                 self.history.time(),
             ));
         }
@@ -487,20 +490,32 @@ mod test {
         let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
         simulation.initialize().ok().unwrap();
         let mut requests = FnvHashMap::default();
-        requests.insert(0, Request { from: Vertex { x: 0, y: 1, }, to: Vertex { x: 2, y: 1, }, });
-        requests.insert(1, Request { from: Vertex { x: 1, y: 0, }, to: Vertex { x: 1, y: 2, }, });
+        requests.insert(
+            0,
+            Request {
+                from: Vertex { x: 0, y: 1 },
+                to: Vertex { x: 2, y: 1 },
+            },
+        );
+        requests.insert(
+            1,
+            Request {
+                from: Vertex { x: 1, y: 0 },
+                to: Vertex { x: 1, y: 2 },
+            },
+        );
         simulation.history = History {
             states: vec![State {
                 robot_states: vec![
                     RobotState {
                         robot_id: 0,
                         parcel_id: Some(0),
-                        vertex: Some(Vertex { x: 1, y: 1, }),
+                        vertex: Some(Vertex { x: 1, y: 1 }),
                     },
                     RobotState {
                         robot_id: 1,
                         parcel_id: Some(1),
-                        vertex: Some(Vertex { x: 1, y: 0, }),
+                        vertex: Some(Vertex { x: 1, y: 0 }),
                     },
                 ],
                 requests: requests.clone(),
@@ -510,19 +525,22 @@ mod test {
 
         let mut new_states = simulation.history.last_state().robot_states.clone();
         let mut used_vertices = FnvHashMap::default();
-        used_vertices.insert(Vertex { x: 1, y: 1, }, 0);
-        used_vertices.insert(Vertex { x: 1, y: 0, }, 1);
+        used_vertices.insert(Vertex { x: 1, y: 1 }, 0);
+        used_vertices.insert(Vertex { x: 1, y: 0 }, 1);
         let mut newly_used_vertices = FnvHashSet::default();
         assert!(
             simulation
                 .process_move_instructions(
-                    vec![MoveInstruction {
-                        robot_id: 0,
-                        vertex: Vertex { x: 2, y: 1 },
-                    }, MoveInstruction {
-                        robot_id: 1,
-                        vertex: Vertex { x: 1, y: 1 },
-                    }],
+                    vec![
+                        MoveInstruction {
+                            robot_id: 0,
+                            vertex: Vertex { x: 2, y: 1 },
+                        },
+                        MoveInstruction {
+                            robot_id: 1,
+                            vertex: Vertex { x: 1, y: 1 },
+                        },
+                    ],
                     &mut new_states,
                     &used_vertices,
                     &mut newly_used_vertices,
@@ -549,20 +567,32 @@ mod test {
         let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
         simulation.initialize().ok().unwrap();
         let mut requests = FnvHashMap::default();
-        requests.insert(0, Request { from: Vertex { x: 0, y: 1, }, to: Vertex { x: 2, y: 1, }, });
-        requests.insert(1, Request { from: Vertex { x: 1, y: 0, }, to: Vertex { x: 1, y: 2, }, });
+        requests.insert(
+            0,
+            Request {
+                from: Vertex { x: 0, y: 1 },
+                to: Vertex { x: 2, y: 1 },
+            },
+        );
+        requests.insert(
+            1,
+            Request {
+                from: Vertex { x: 1, y: 0 },
+                to: Vertex { x: 1, y: 2 },
+            },
+        );
         simulation.history = History {
             states: vec![State {
                 robot_states: vec![
                     RobotState {
                         robot_id: 0,
                         parcel_id: Some(0),
-                        vertex: Some(Vertex { x: 1, y: 1, }),
+                        vertex: Some(Vertex { x: 1, y: 1 }),
                     },
                     RobotState {
                         robot_id: 1,
                         parcel_id: Some(1),
-                        vertex: Some(Vertex { x: 0, y: 0, }),
+                        vertex: Some(Vertex { x: 0, y: 0 }),
                     },
                 ],
                 requests: requests.clone(),
@@ -572,21 +602,24 @@ mod test {
 
         let mut new_states = simulation.history.last_state().robot_states.clone();
         let mut used_vertices = FnvHashMap::default();
-        used_vertices.insert(Vertex { x: 1, y: 1, }, 0);
-        used_vertices.insert(Vertex { x: 0, y: 0, }, 1);
+        used_vertices.insert(Vertex { x: 1, y: 1 }, 0);
+        used_vertices.insert(Vertex { x: 0, y: 0 }, 1);
         let mut newly_used_vertices = FnvHashSet::default();
         let new_requests = requests.clone();
         let expected_new_requests = new_requests.clone();
         assert!(
             simulation
                 .process_move_instructions(
-                    vec![MoveInstruction {
-                        robot_id: 0,
-                        vertex: Vertex { x: 2, y: 1 },
-                    }, MoveInstruction {
-                        robot_id: 1,
-                        vertex: Vertex { x: 0, y: 1 },
-                    }],
+                    vec![
+                        MoveInstruction {
+                            robot_id: 0,
+                            vertex: Vertex { x: 2, y: 1 },
+                        },
+                        MoveInstruction {
+                            robot_id: 1,
+                            vertex: Vertex { x: 0, y: 1 },
+                        },
+                    ],
                     &mut new_states,
                     &used_vertices,
                     &mut newly_used_vertices,
@@ -603,11 +636,12 @@ mod test {
             RobotState {
                 robot_id: 1,
                 parcel_id: Some(1),
-                vertex: Some(Vertex { x: 0, y: 1, }),
+                vertex: Some(Vertex { x: 0, y: 1 }),
             },
         ];
-        let expected_newly_used_vertices = vec![Vertex { x: 2, y: 1 },
-        Vertex { x: 0, y: 1, }].into_iter().collect();
+        let expected_newly_used_vertices = vec![Vertex { x: 2, y: 1 }, Vertex { x: 0, y: 1 }]
+            .into_iter()
+            .collect();
         assert_eq!(new_states, expected_new_states);
         assert_eq!(newly_used_vertices, expected_newly_used_vertices);
         assert_eq!(new_requests, expected_new_requests);
