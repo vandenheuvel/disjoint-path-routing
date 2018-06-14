@@ -1,8 +1,9 @@
-use itertools::Itertools;
 use std::fs::File;
 use std::io;
 use std::io::BufWriter;
 use std::io::Write;
+
+use itertools::Itertools;
 
 pub mod one_three_rectangle;
 
@@ -35,6 +36,9 @@ pub trait Plan {
         writer.flush()
     }
     fn nr_vertices(&self) -> u64;
+    fn path_length(&self, from: Vertex, to: Vertex) -> u64 {
+        from.distance(to)
+    }
 }
 
 pub trait Rectangle: Plan {

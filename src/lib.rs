@@ -1,6 +1,9 @@
+#![feature(nll)]
+
 extern crate core;
 extern crate fnv;
 extern crate itertools;
+extern crate lp_modeler;
 extern crate priority_queue;
 extern crate rand;
 

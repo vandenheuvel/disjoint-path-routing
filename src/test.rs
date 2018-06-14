@@ -1,38 +1,98 @@
-use algorithm::greedy_shortest_paths::GreedyShortestPaths;
-use algorithm::Algorithm;
+use algorithm::assignment::greedy_makespan::GreedyMakespan;
+use algorithm::assignment::AssignmentAlgorithm;
+use algorithm::path::greedy_shortest_paths::GreedyShortestPaths;
+use algorithm::path::PathAlgorithm;
 use simulation::demand::uniform::Uniform;
 use simulation::demand::Demand;
 use simulation::plan::one_three_rectangle::OneThreeRectangle;
+use simulation::settings::AssignmentMethod::Single;
 use simulation::settings::Settings;
 use simulation::simulation::Simulation;
 
-#[test]
-fn integration() {
-    let plan = OneThreeRectangle::new(3, 3);
-    let settings = Settings {
+macro_rules! simulate {
+    (
+        $func_name:ident,($x_size:expr, $y_size:expr),
+        $assignment:ident,
+        $path:ident,
+        $settings:expr,
+        $seed:expr,
+    ) => {
+        #[test]
+        fn $func_name() {
+            let plan = OneThreeRectangle::new($x_size, $y_size);
+            let settings = $settings;
+            let assignment_algorithm = Box::new(<$assignment as AssignmentAlgorithm>::instantiate(
+                &plan, &settings,
+            ));
+            let path_algorithm = Box::new(<$path as PathAlgorithm>::instantiate(
+                &plan,
+                &settings,
+                assignment_algorithm,
+            ));
+            let demand = Box::new(<Uniform as Demand>::create($seed));
+
+            let mut simulation = Simulation::new(path_algorithm, &plan, demand, &settings);
+            simulation.initialize().ok().unwrap();
+            let result = simulation.run();
+
+            let is_ok = result.is_ok();
+            if let Err(error) = result {
+                println!(
+                    "{:?}: {:?} at time {}",
+                    error.message(),
+                    error.instruction(),
+                    error.time()
+                );
+            };
+            assert!(is_ok);
+        }
+    };
+}
+
+simulate!(
+    greedy_makespan_greedy_shortest_paths,
+    (3, 3),
+    GreedyMakespan,
+    GreedyShortestPaths,
+    Settings {
         total_time: 5,
         maximum_robots: 1,
         nr_requests: 1,
+        assignment: Single,
         real_time: false,
         output_file: None,
-    };
-    let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(
-        &plan, &settings,
-    ));
-    let demand = Box::new(<Uniform as Demand>::create(&[1, 3]));
+    },
+    &[1, 2, 3],
+);
 
-    let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
-    simulation.initialize().ok().unwrap();
-    let result = simulation.run();
+simulate!(
+    greedy_makespan_greedy_shortest_paths_long_time,
+    (30, 30),
+    GreedyMakespan,
+    GreedyShortestPaths,
+    Settings {
+        total_time: 60,
+        maximum_robots: 1,
+        nr_requests: 1,
+        assignment: Single,
+        real_time: false,
+        output_file: None,
+    },
+    &[1, 2, 3],
+);
 
-    let is_ok = result.is_ok();
-    if let Err(error) = result {
-        println!(
-            "{:?}: {:?} at time {}",
-            error.message(),
-            error.instruction(),
-            error.time()
-        );
-    };
-    assert!(is_ok);
-}
+simulate!(
+    greedy_makespan_greedy_shortest_paths_multiple_robots,
+    (30, 30),
+    GreedyMakespan,
+    GreedyShortestPaths,
+    Settings {
+        total_time: 1000,
+        maximum_robots: 30,
+        nr_requests: 300,
+        assignment: Single,
+        real_time: false,
+        output_file: None,
+    },
+    &[1, 2, 3],
+);

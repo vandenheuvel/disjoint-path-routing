@@ -1,3 +1,4 @@
+use simulation::settings::AssignmentMethod::Single;
 use std::fs::File;
 use std::io;
 use std::io::BufWriter;
@@ -9,6 +10,7 @@ pub struct Settings {
     pub nr_requests: u64,
     pub real_time: bool,
     pub output_file: Option<String>,
+    pub assignment: AssignmentMethod,
     // pub failure_rate: f64,
     // pub taxi_or_paths: TaxiOrPath,
 }
@@ -31,6 +33,12 @@ impl Default for Settings {
             nr_requests: 4,
             real_time: false,
             output_file: None,
+            assignment: Single,
         }
     }
+}
+
+pub enum AssignmentMethod {
+    Single,
+    Multiple,
 }

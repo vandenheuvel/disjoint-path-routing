@@ -1,64 +1,58 @@
-use algorithm::greedy_shortest_paths::Path;
+use algorithm::path::greedy_shortest_paths::Path;
 use fnv::FnvHashSet;
-use itertools::repeat_n;
 use priority_queue::PriorityQueue;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
+use std::iter::repeat;
 
 pub struct TimeGraph<'a> {
     plan: &'a Plan,
-    vertices: Vec<FnvHashSet<Vertex>>,
-    total_time: usize,
+    vertices: VecDeque<FnvHashSet<Vertex>>,
+
+    earliest_time: usize,
+    capacity: usize,
 }
 
 impl<'a> TimeGraph<'a> {
-    pub fn from_plan(plan: &'a impl Plan, total_time: usize) -> TimeGraph<'a> {
+    pub fn from_plan(plan: &'a impl Plan, capacity: usize) -> TimeGraph<'a> {
         debug_assert!(plan.sources().len() > 0);
         debug_assert!(plan.terminals().len() > 0);
 
         let plan_vertices = plan.vertices().into_iter().collect::<FnvHashSet<_>>();
-        let vertices = repeat_n(plan_vertices, total_time + 1).collect();
+        let vertices = repeat(plan_vertices).take(capacity + 1).collect();
 
         TimeGraph {
             plan,
             vertices,
-            total_time,
+
+            earliest_time: 0,
+            capacity,
         }
     }
-    pub fn find_earliest_path_after(&self, time: usize, from: Vertex, to: Vertex) -> Option<Path> {
-        debug_assert!(time > 0);
-
-        for start_time in time..self.total_time {
-            if let Some(path) = self.find_path(start_time, from, to) {
-                return Some(path);
-            }
-        }
-
-        None
-    }
-    fn find_path(&self, start_time: usize, from: Vertex, to: Vertex) -> Option<Path> {
-        debug_assert!(start_time > 0);
+    pub fn find_path(&mut self, start_time: usize, from: Vertex, to: Vertex) -> Option<Path> {
         debug_assert_ne!(from, to);
 
-        if !&self.vertices[start_time].contains(&from) {
+        let start_index = start_time - self.earliest_time;
+        if !&self.vertices[start_index].contains(&from) {
             return None;
         }
 
         let mut came_from = HashMap::new();
         let mut visited = HashSet::new();
         let mut to_visit: PriorityQueue<(usize, Vertex), Reverse<u64>> = PriorityQueue::new();
-        to_visit.push((start_time, from), Reverse(from.distance(to)));
+        to_visit.push((start_index, from), Reverse(from.distance(to)));
 
         let mut distances: HashMap<TimeVertex, u64> = HashMap::new();
-        distances.insert((start_time, from), 0);
+        distances.insert((start_index, from), 0);
 
         while let Some((current, _)) = to_visit.pop() {
             let (time, vertex) = current;
             if vertex == to {
-                return Some(TimeGraph::reconstruct_path(came_from, current));
+                return Some(TimeGraph::reconstruct_path(came_from, current, start_time));
             }
 
             visited.insert(current);
@@ -84,24 +78,22 @@ impl<'a> TimeGraph<'a> {
     }
     fn reconstruct_path(
         came_from: HashMap<TimeVertex, TimeVertex>,
-        (previous_time, previous_vertex): TimeVertex,
+        (previous_index, previous_vertex): TimeVertex,
+        start_time: usize,
     ) -> Path {
         debug_assert!(came_from.len() > 0);
 
         let mut nodes = Vec::new();
         nodes.push(previous_vertex);
-        let mut time = previous_time;
+        let mut index = previous_index;
 
-        while let Some(&(_, previous_vertex)) = came_from.get(&(time, *nodes.last().unwrap())) {
-            time -= 1;
+        while let Some(&(_, previous_vertex)) = came_from.get(&(index, *nodes.last().unwrap())) {
+            index -= 1;
             nodes.push(previous_vertex);
         }
         nodes.reverse();
 
-        let path = Path {
-            start_time: time,
-            nodes,
-        };
+        let path = Path { start_time, nodes };
 
         debug_assert!(path.nodes.len() > 1);
         debug_assert!(path.start_time > 0);
@@ -111,30 +103,45 @@ impl<'a> TimeGraph<'a> {
         debug_assert!(path.nodes.len() > 1);
 
         let Path { start_time, nodes } = path;
+        let start_index = start_time - self.earliest_time;
         for (index, node) in nodes.iter().enumerate() {
-            let time = start_time + index;
-            if time > 1 {
+            let time = start_index + index;
+            if time >= 1 {
                 self.vertices[time - 1].remove(node);
             }
             self.vertices[time].remove(node);
-            if time + 1 <= self.total_time {
+            if time + 1 <= self.capacity {
                 self.vertices[time + 1].remove(node);
             }
         }
     }
-    fn neighbors(&self, vertex: Vertex, time: usize) -> Vec<TimeVertex> {
-        debug_assert!(time <= self.total_time);
+    fn neighbors(&mut self, vertex: Vertex, time: usize) -> Vec<TimeVertex> {
+        debug_assert!(time <= self.capacity);
 
-        if time < self.total_time {
-            self.plan
-                .neighbors(&vertex)
-                .into_iter()
-                .filter(|vertex| self.vertices[time + 1].contains(vertex))
-                .map(|vertex| (time + 1, vertex))
-                .collect()
-        } else {
-            Vec::with_capacity(0)
+        if time == self.capacity {
+            self.extend(50);
         }
+
+        self.plan
+            .neighbors(&vertex)
+            .into_iter()
+            .filter(|vertex| self.vertices[time + 1].contains(vertex))
+            .map(|vertex| (time + 1, vertex))
+            .collect()
+    }
+    fn extend(&mut self, extra_capacity: usize) {
+        let plan_vertices = self.plan.vertices().into_iter().collect::<FnvHashSet<_>>();
+        let mut new_layers = repeat(plan_vertices)
+            .take(extra_capacity)
+            .collect::<VecDeque<_>>();
+        self.vertices.append(&mut new_layers);
+    }
+    pub fn clean_front(&mut self, new_earliest_time: usize) {
+        debug_assert!(new_earliest_time > self.earliest_time);
+
+        self.vertices
+            .drain(..(new_earliest_time - self.earliest_time));
+        self.earliest_time = new_earliest_time;
     }
 }
 
@@ -187,7 +194,7 @@ mod test {
     #[test]
     fn test_neighbors() {
         let (_, _, total_time, plan) = new();
-        let time_graph = TimeGraph::from_plan(&plan, total_time);
+        let mut time_graph = TimeGraph::from_plan(&plan, total_time);
 
         macro_rules! test {
             (($t: expr, $x:expr, $y:expr),
@@ -207,7 +214,15 @@ mod test {
         // Corner
         test!((3, 0, 0), [(4, 1, 0), (4, 0, 1)]);
         // Final time period
-        test!((total_time, 0, 0), []);
+        test!(
+            (total_time, 1, 1),
+            [
+                (total_time + 1, 2, 1),
+                (total_time + 1, 0, 1),
+                (total_time + 1, 1, 2),
+                (total_time + 1, 1, 0)
+            ]
+        );
     }
 
     #[test]
@@ -219,7 +234,7 @@ mod test {
         came_before.insert((3, Vertex { x: 3, y: 3 }), (2, Vertex { x: 3, y: 2 }));
         came_before.insert((2, Vertex { x: 3, y: 2 }), (1, start));
 
-        let Path { start_time, nodes } = TimeGraph::reconstruct_path(came_before, (4, end));
+        let Path { start_time, nodes } = TimeGraph::reconstruct_path(came_before, (4, end), 1);
 
         assert_eq!(nodes.first(), Some(&start));
         assert_eq!(nodes.last(), Some(&end));
@@ -229,7 +244,7 @@ mod test {
     #[test]
     fn test_find_path() {
         let (_, _, total_time, plan) = new();
-        let time_graph = TimeGraph::from_plan(&plan, total_time);
+        let mut time_graph = TimeGraph::from_plan(&plan, total_time);
 
         macro_rules! test {
             ($start_time:expr,
@@ -275,7 +290,7 @@ mod test {
         };
         // Time just long enough
         let (start_time, total_time) = (1, x_size as usize);
-        let time_graph = TimeGraph::from_plan(&plan, total_time);
+        let mut time_graph = TimeGraph::from_plan(&plan, total_time);
         assert_eq!(
             time_graph.find_path(
                 1,
@@ -290,36 +305,6 @@ mod test {
                 nodes: vec![from, to],
             })
         );
-        // Time just too short
-        let total_time = x_size as usize - 1;
-        let time_graph = TimeGraph::from_plan(&plan, total_time);
-        assert_eq!(
-            time_graph.find_path(
-                1,
-                Vertex { x: 0, y: 1 },
-                Vertex {
-                    x: x_size - 1,
-                    y: 1,
-                }
-            ),
-            None
-        );
-    }
-
-    #[test]
-    fn test_find_earliest_path() {
-        let (_, _, total_time, plan) = new();
-        let time_graph = TimeGraph::from_plan(&plan, total_time);
-        let from = Vertex { x: 0, y: 1 };
-        let to = Vertex { x: 1, y: 1 };
-
-        assert_eq!(
-            time_graph.find_earliest_path_after(1, Vertex { x: 0, y: 1 }, Vertex { x: 1, y: 1 }),
-            Some(Path {
-                start_time: 1,
-                nodes: vec![from, to],
-            })
-        );
     }
 
     #[test]
@@ -329,7 +314,7 @@ mod test {
 
         let from = Vertex { x: 0, y: 1 };
         let to = Vertex { x: 1, y: 1 };
-        let start_time = 0;
+        let start_time = 1;
         let path = Path {
             start_time,
             nodes: vec![from, to],
@@ -340,7 +325,8 @@ mod test {
         assert!(!time_graph.vertices[start_time + 1].contains(&from));
         assert!(time_graph.vertices[start_time + 2].contains(&from));
 
-        assert!(time_graph.vertices[start_time].contains(&to));
+        assert!(time_graph.vertices[start_time - 1].contains(&to));
+        assert!(!time_graph.vertices[start_time].contains(&to));
         assert!(!time_graph.vertices[start_time + 1].contains(&to));
         assert!(!time_graph.vertices[start_time + 2].contains(&to));
     }

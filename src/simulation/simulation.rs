@@ -1,4 +1,4 @@
-use algorithm::Algorithm;
+use algorithm::path::PathAlgorithm;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 use simulation::demand::Demand;
@@ -24,7 +24,7 @@ use std::io;
 use std::io::BufWriter;
 
 pub struct Simulation<'a, 'p, 's> {
-    algorithm: Box<Algorithm<'p, 's> + 'a>,
+    algorithm: Box<PathAlgorithm<'p, 's, 'a> + 'a>,
     plan: &'p Plan,
     demand: Box<Demand + 'a>,
     settings: &'s Settings,
@@ -35,7 +35,7 @@ pub struct Simulation<'a, 'p, 's> {
 
 impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     pub fn new(
-        algorithm: Box<Algorithm<'p, 's> + 'a>,
+        algorithm: Box<PathAlgorithm<'p, 's, 'a> + 'a>,
         plan: &'p Plan,
         demand: Box<Demand + 'a>,
         settings: &'s Settings,
@@ -56,8 +56,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             self.setup_output(file_name)?;
         }
         self.set_initial_state();
-        self.algorithm
-            .initialize(&self.history.last_state().requests);
+        self.algorithm.initialize();
 
         if let Some(ref mut writer) = self.output_writer {
             self.settings.write(writer)?;
@@ -96,9 +95,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         while self.history.last_state().requests.len() > 0
             && self.history.time() < self.settings.total_time
         {
-            //
             let instructions = self.algorithm.next_step(&self.history);
-            //
             self.new_state(instructions)?;
             if let Some(ref mut writer) = self.output_writer {
                 self.history.last_state().write(writer);
@@ -394,9 +391,13 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use algorithm::greedy_shortest_paths::GreedyShortestPaths;
+    use algorithm::assignment::greedy_makespan::GreedyMakespan;
+    use algorithm::assignment::AssignmentAlgorithm;
+    use algorithm::path::greedy_shortest_paths::GreedyShortestPaths;
+    use algorithm::path::PathAlgorithm;
     use simulation::demand::uniform::Uniform;
     use simulation::plan::one_three_rectangle::OneThreeRectangle;
+    use simulation::settings::AssignmentMethod::Single;
 
     #[test]
     fn test_process_placement_instructions() {
@@ -408,9 +409,15 @@ mod test {
             nr_requests: 2,
             real_time: false,
             output_file: None,
+            assignment: Single,
         };
-        let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(
-            &plan, &settings,
+        let mut assignment_algorithm = Box::new(
+            <GreedyMakespan as AssignmentAlgorithm>::instantiate(&plan, &settings),
+        );
+        let mut algorithm = Box::new(GreedyShortestPaths::instantiate(
+            &plan,
+            &settings,
+            assignment_algorithm,
         ));
 
         let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
@@ -482,9 +489,16 @@ mod test {
             nr_requests: 1,
             real_time: false,
             output_file: None,
+            assignment: Single,
         };
-        let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(
-            &plan, &settings,
+
+        let assignment_algorithm = Box::new(
+            <GreedyMakespan as AssignmentAlgorithm>::instantiate(&plan, &settings),
+        );
+        let algorithm = Box::new(GreedyShortestPaths::instantiate(
+            &plan,
+            &settings,
+            assignment_algorithm,
         ));
 
         let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
@@ -559,9 +573,16 @@ mod test {
             nr_requests: 1,
             real_time: false,
             output_file: None,
+            assignment: Single,
         };
-        let algorithm = Box::new(<GreedyShortestPaths as Algorithm>::instantiate(
-            &plan, &settings,
+
+        let assignment_algorithm = Box::new(
+            <GreedyMakespan as AssignmentAlgorithm>::instantiate(&plan, &settings),
+        );
+        let algorithm = Box::new(GreedyShortestPaths::instantiate(
+            &plan,
+            &settings,
+            assignment_algorithm,
         ));
 
         let mut simulation = Simulation::new(algorithm, &plan, demand, &settings);
