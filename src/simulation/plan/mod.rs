@@ -6,13 +6,13 @@ use std::io::Write;
 use itertools::Itertools;
 
 pub mod one_three_rectangle;
+pub mod middle_terminals;
 
 pub trait Plan {
     fn vertices(&self) -> Vec<Vertex>;
     fn contains(&self, vertex: &Vertex) -> bool;
     fn sources(&self) -> Vec<Vertex>;
     fn terminals(&self) -> Vec<Vertex>;
-    fn edges(&self) -> Vec<UndirectedEdge>;
     fn neighbors(&self, vertex: &Vertex) -> Vec<Vertex>;
     fn write(&self, writer: &mut BufWriter<File>) -> io::Result<()> {
         writer.write("# Vertices\n".as_bytes())?;
@@ -35,7 +35,6 @@ pub trait Plan {
 
         writer.flush()
     }
-    fn nr_vertices(&self) -> u64;
     fn path_length(&self, from: Vertex, to: Vertex) -> u64 {
         from.distance(to)
     }
@@ -47,6 +46,9 @@ pub trait Rectangle: Plan {
             .cartesian_product(0..self.y_size())
             .map(|(x, y)| Vertex { x, y })
             .collect()
+    }
+    fn contains(&self, vertex: &Vertex) -> bool {
+        vertex.x < self.x_size() && vertex.y < self.y_size()
     }
     fn x_size(&self) -> u64;
     fn y_size(&self) -> u64;

@@ -31,7 +31,7 @@ impl Plan for OneThreeRectangle {
         Rectangle::vertices(self)
     }
     fn contains(&self, vertex: &Vertex) -> bool {
-        vertex.x < self.x_size && vertex.y < self.y_size
+        Rectangle::contains(self, vertex)
     }
     fn sources(&self) -> Vec<Vertex> {
         (1..self.y_size() - 1).map(|y| Vertex { x: 0, y }).collect()
@@ -57,29 +57,6 @@ impl Plan for OneThreeRectangle {
 
         terminals
     }
-    fn edges(&self) -> Vec<UndirectedEdge> {
-        let mut edges = Vec::new();
-
-        for Vertex { x, y } in Rectangle::vertices(self) {
-            // Edge up
-            if y < self.y_size() - 1 {
-                edges.push(UndirectedEdge {
-                    first: Vertex { x, y },
-                    second: Vertex { x, y: y + 1 },
-                });
-            }
-
-            // Edge right
-            if x < self.x_size - 1 {
-                edges.push(UndirectedEdge {
-                    first: Vertex { x, y },
-                    second: Vertex { x: x + 1, y },
-                });
-            }
-        }
-
-        edges
-    }
     fn neighbors(&self, &Vertex { x, y }: &Vertex) -> Vec<Vertex> {
         debug_assert!(x < self.x_size);
         debug_assert!(y < self.y_size);
@@ -99,9 +76,6 @@ impl Plan for OneThreeRectangle {
         }
 
         neighbors
-    }
-    fn nr_vertices(&self) -> u64 {
-        self.x_size() * self.y_size()
     }
 }
 
@@ -157,7 +131,6 @@ mod test {
 
             // All vertices
             assert_eq!(Rectangle::vertices(&plan).len(), (x_size * y_size) as usize);
-            assert_eq!(plan.nr_vertices(), (x_size * y_size));
             // The lower corner is a vertex
             assert!(<OneThreeRectangle as Plan>::vertices(&plan).contains(&Vertex { x: 0, y: 0 }));
             // The upper corner is a vertex
@@ -214,50 +187,6 @@ mod test {
             // Corners are not terminals
             for &(x, y) in corners(x_size, y_size).iter() {
                 assert!(!plan.terminals().contains(&Vertex { x, y }));
-            }
-        }
-
-        #[test]
-        fn test_edges() {
-            let (x_size, y_size, plan) = new();
-
-            // Counting total number of edges
-            let (middle_vertices, middle_degrees) = ((x_size - 2) * (y_size - 2), 4);
-            let (boundary_vertices, boundary_degrees) = (2 * (x_size - 2) + 2 * (y_size - 2), 3);
-            let (corner_vertices, corner_degrees) = (4, 2);
-
-            let sum_of_degrees = middle_vertices * middle_degrees
-                + boundary_vertices * boundary_degrees
-                + corner_vertices * corner_degrees;
-            let nr_edges = sum_of_degrees / 2;
-
-            assert_eq!(plan.edges().len() as u64, nr_edges);
-            // A couple of example edges
-            assert!(plan.edges().contains(&UndirectedEdge {
-                first: Vertex { x: 0, y: 0 },
-                second: Vertex { x: 0, y: 1 },
-            }));
-            assert!(plan.edges().contains(&UndirectedEdge {
-                first: Vertex {
-                    x: x_size - 2,
-                    y: 0,
-                },
-                second: Vertex {
-                    x: x_size - 1,
-                    y: 0,
-                },
-            }));
-            if x_size > 2 && y_size > 1 {
-                assert!(plan.edges().contains(&UndirectedEdge {
-                    first: Vertex {
-                        x: (x_size - 1) / 2,
-                        y: (y_size - 1) / 2,
-                    },
-                    second: Vertex {
-                        x: (x_size - 1) / 2 + 1,
-                        y: (y_size - 1) / 2,
-                    },
-                }));
             }
         }
 

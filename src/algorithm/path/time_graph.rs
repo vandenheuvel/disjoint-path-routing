@@ -18,19 +18,19 @@ pub struct TimeGraph<'a> {
 }
 
 impl<'a> TimeGraph<'a> {
-    pub fn from_plan(plan: &'a impl Plan, capacity: usize) -> TimeGraph<'a> {
+    pub fn from_plan(plan: &'a impl Plan, initial_capacity: usize) -> TimeGraph<'a> {
         debug_assert!(plan.sources().len() > 0);
         debug_assert!(plan.terminals().len() > 0);
 
         let plan_vertices = plan.vertices().into_iter().collect::<FnvHashSet<_>>();
-        let vertices = repeat(plan_vertices).take(capacity + 1).collect();
+        let vertices = repeat(plan_vertices).take(initial_capacity + 1).collect();
 
         TimeGraph {
             plan,
             vertices,
 
             earliest_time: 0,
-            capacity,
+            capacity: initial_capacity + 1,
         }
     }
     pub fn find_path(&mut self, start_time: usize, from: Vertex, to: Vertex) -> Option<Path> {
@@ -50,14 +50,14 @@ impl<'a> TimeGraph<'a> {
         distances.insert((start_index, from), 0);
 
         while let Some((current, _)) = to_visit.pop() {
-            let (time, vertex) = current;
+            let (index, vertex) = current;
             if vertex == to {
                 return Some(TimeGraph::reconstruct_path(came_from, current, start_time));
             }
 
             visited.insert(current);
 
-            for neighbor in self.neighbors(vertex, time) {
+            for neighbor in self.neighbors(vertex, index) {
                 if visited.contains(&neighbor) {
                     continue;
                 }
@@ -115,18 +115,18 @@ impl<'a> TimeGraph<'a> {
             }
         }
     }
-    fn neighbors(&mut self, vertex: Vertex, time: usize) -> Vec<TimeVertex> {
-        debug_assert!(time <= self.capacity);
+    fn neighbors(&mut self, vertex: Vertex, index: usize) -> Vec<TimeVertex> {
+        debug_assert!(index <= self.capacity);
 
-        if time == self.capacity {
+        if index == self.capacity - 1 {
             self.extend(50);
         }
 
         self.plan
             .neighbors(&vertex)
             .into_iter()
-            .filter(|vertex| self.vertices[time + 1].contains(vertex))
-            .map(|vertex| (time + 1, vertex))
+            .filter(|vertex| self.vertices[index + 1].contains(vertex))
+            .map(|vertex| (index + 1, vertex))
             .collect()
     }
     fn extend(&mut self, extra_capacity: usize) {
@@ -135,12 +135,15 @@ impl<'a> TimeGraph<'a> {
             .take(extra_capacity)
             .collect::<VecDeque<_>>();
         self.vertices.append(&mut new_layers);
+        self.capacity += extra_capacity;
     }
     pub fn clean_front(&mut self, new_earliest_time: usize) {
         debug_assert!(new_earliest_time > self.earliest_time);
 
-        self.vertices
-            .drain(..(new_earliest_time - self.earliest_time));
+        let to_remove = new_earliest_time - self.earliest_time;
+        self.vertices.drain(..to_remove);
+        self.capacity -= to_remove;
+
         self.earliest_time = new_earliest_time;
     }
 }
