@@ -47,12 +47,12 @@ impl<'p, 's, 'a> GreedyShortestPaths<'p, 's, 'a> {
                             break;
                         }
                     }
-                }
+                },
                 Some((start_time, path)) => {
-                    if *start_time + path.nodes.len() - 1 > self.time {
+                    if self.time > path.end_time() {
                         *maybe_path = None;
                     }
-                }
+                },
             }
 
             if let Some((robot, assignment_index)) = to_delete {
@@ -121,15 +121,6 @@ impl<'p, 's, 'a> GreedyShortestPaths<'p, 's, 'a> {
             })
             .collect::<Vec<_>>()
     }
-    fn remove_old_paths(&mut self) {
-        for maybe_path in self.active_paths.iter_mut() {
-            if let Some((_, path)) = maybe_path {
-                if self.time > path.end_time() {
-                    *maybe_path = None;
-                }
-            }
-        }
-    }
 }
 
 impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for GreedyShortestPaths<'p, 's, 'a> {
@@ -159,10 +150,8 @@ impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for GreedyShortestPaths<'p, 's, 'a> {
 
         if self.contains_new_requests(history) {
             self.update_assignment(&history.last_state().requests);
-            self.update_paths(&history.last_state().requests);
-        } else {
-            self.remove_old_paths();
         }
+        self.update_paths(&history.last_state().requests);
 
         let mut instructions = Instructions {
             movements: Vec::new(),

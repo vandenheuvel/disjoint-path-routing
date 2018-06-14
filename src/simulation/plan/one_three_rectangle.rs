@@ -85,17 +85,17 @@ impl Plan for OneThreeRectangle {
         debug_assert!(y < self.y_size);
 
         let mut neighbors = Vec::new();
-        if x > 0 {
-            neighbors.push(Vertex { x: x - 1, y });
-        }
         if x < self.x_size() - 1 {
             neighbors.push(Vertex { x: x + 1, y });
+        }
+        if y < self.y_size() - 1 {
+            neighbors.push(Vertex { x, y: y + 1 });
         }
         if y > 0 {
             neighbors.push(Vertex { x, y: y - 1 });
         }
-        if y < self.y_size() - 1 {
-            neighbors.push(Vertex { x, y: y + 1 });
+        if x > 0 {
+            neighbors.push(Vertex { x: x - 1, y });
         }
 
         neighbors
