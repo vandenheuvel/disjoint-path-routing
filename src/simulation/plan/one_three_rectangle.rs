@@ -1,6 +1,5 @@
 use simulation::plan::Plan;
 use simulation::plan::Rectangle;
-use simulation::plan::UndirectedEdge;
 use simulation::plan::Vertex;
 
 pub struct OneThreeRectangle {
@@ -228,29 +227,6 @@ mod test {
                 [(x_size - 2, y_size - 1), (x_size - 1, y_size - 2)]
             );
             test!((0, y_size - 1), [(1, y_size - 1), (0, y_size - 2)]);
-        }
-    }
-
-    mod undirected_edges {
-        use super::*;
-
-        #[test]
-        fn eq() {
-            let first = Vertex { x: 3, y: 4 };
-            let second = Vertex { x: 4, y: 5 };
-            let third = Vertex { x: 5, y: 6 };
-
-            let a = UndirectedEdge { first, second };
-            let b = UndirectedEdge { second, first };
-            let c = UndirectedEdge {
-                first,
-                second: third,
-            };
-
-            assert_eq!(a, b);
-            assert_eq!(b, a);
-            assert_ne!(a, c);
-            assert_ne!(c, a);
         }
     }
 }

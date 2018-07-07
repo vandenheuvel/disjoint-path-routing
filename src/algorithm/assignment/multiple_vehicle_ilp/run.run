@@ -1,0 +1,10 @@
+model 'multiple_vehicle_ilp.mod';
+data 'example_data2.dat';
+option solver '/home/bram/Downloads/amplide.linux64/gurobi';
+option show_stats 0;
+option gurobi_options 'timelim 3';
+solve;
+option omit_zero_rows 1;
+display First_Request;
+display Transitions;
+display Last_Request_Location;

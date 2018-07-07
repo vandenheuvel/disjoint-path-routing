@@ -1,0 +1,7 @@
+model 'makespan_single_vehicle_ilp.mod';
+data 'example_data.dat';
+option solver '/home/bram/Downloads/amplide.linux64/gurobi';
+option show_stats 0;
+solve;
+option omit_zero_rows 1;
+display Flow;

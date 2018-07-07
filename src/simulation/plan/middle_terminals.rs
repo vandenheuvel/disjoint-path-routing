@@ -1,10 +1,8 @@
 use simulation::plan::Plan;
-use simulation::plan::Vertex;
-use simulation::plan::UndirectedEdge;
 use simulation::plan::Rectangle;
+use simulation::plan::Vertex;
 
 use itertools::Itertools;
-use std::collections::HashSet;
 
 pub struct MiddleTerminals {
     pub x_size: u64,
@@ -32,14 +30,21 @@ impl MiddleTerminals {
         let nr_x_terminals = (self.x_size - 2 * self.padding) / self.interval;
         let nr_y_terminals = (self.y_size - 2 * self.padding) / self.interval;
 
-        (0..(nr_x_terminals + 1)).cartesian_product(0..(nr_y_terminals + 1))
-            .map(|(x, y)| (self.padding + x * self.interval, self.padding + y * self.interval))
-            .filter(|&(x, y)|
-                self.padding <= x &&
-                x <= self.x_size - self.padding &&
-                self.padding <= y &&
-                y <= self.y_size - self.padding)
-            .map(|(x, y)| Vertex { x, y, })
+        (0..(nr_x_terminals + 1))
+            .cartesian_product(0..(nr_y_terminals + 1))
+            .map(|(x, y)| {
+                (
+                    self.padding + x * self.interval,
+                    self.padding + y * self.interval,
+                )
+            })
+            .filter(|&(x, y)| {
+                self.padding <= x
+                    && x <= self.x_size - self.padding
+                    && self.padding <= y
+                    && y <= self.y_size - self.padding
+            })
+            .map(|(x, y)| Vertex { x, y })
             .collect()
     }
 }
@@ -61,15 +66,15 @@ impl Plan for MiddleTerminals {
             .collect()
     }
     fn contains(&self, &Vertex { x, y }: &Vertex) -> bool {
-        x < self.x_size &&
-            y < self.y_size &&
-            (x as i64 - self.padding as i64) % self.interval as i64 != 0 ||
-            (y as i64 - self.padding as i64) % self.interval as i64 != 0
+        x < self.x_size
+            && y < self.y_size
+            && (x as i64 - self.padding as i64) % self.interval as i64 != 0
+            || (y as i64 - self.padding as i64) % self.interval as i64 != 0
     }
     fn sources(&self) -> Vec<Vertex> {
         (0..self.y_size)
             .filter(|&y| self.padding < y && y < self.y_size - self.padding)
-            .map(|y| Vertex { x: 0, y, })
+            .map(|y| Vertex { x: 0, y })
             .collect()
     }
     fn terminals(&self) -> Vec<Vertex> {

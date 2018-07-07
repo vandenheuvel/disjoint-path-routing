@@ -5,10 +5,10 @@ use std::io::Write;
 
 use itertools::Itertools;
 
-pub mod one_three_rectangle;
 pub mod middle_terminals;
+pub mod one_three_rectangle;
 
-pub trait Plan {
+pub trait Plan: Send + Sync {
     fn vertices(&self) -> Vec<Vertex>;
     fn contains(&self, vertex: &Vertex) -> bool;
     fn sources(&self) -> Vec<Vertex>;

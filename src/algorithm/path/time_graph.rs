@@ -52,7 +52,9 @@ impl<'a> TimeGraph<'a> {
         while let Some((current, _)) = to_visit.pop() {
             let (index, vertex) = current;
             if vertex == to {
-                return Some(TimeGraph::reconstruct_path(came_from, current, start_time));
+                if self.vertices[index + 1].contains(&to) {
+                    return Some(TimeGraph::reconstruct_path(came_from, current, start_time));
+                }
             }
 
             visited.insert(current);
@@ -122,8 +124,9 @@ impl<'a> TimeGraph<'a> {
             self.extend(50);
         }
 
-        self.plan
-            .neighbors(&vertex)
+        let mut plan_neighbors = self.plan.neighbors(&vertex);
+        plan_neighbors.push(vertex);
+        plan_neighbors
             .into_iter()
             .filter(|vertex| self.vertices[index + 1].contains(vertex))
             .map(|vertex| (index + 1, vertex))

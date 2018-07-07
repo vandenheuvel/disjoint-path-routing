@@ -1,0 +1,15 @@
+set ROBOTS :=
+  4,
+;
+set REQUESTS :=
+  0,
+;
+param start_costs default 0 :=
+4 0 1
+;
+param transition_costs default 0 :=
+0 0 2
+;
+param end_costs default 0 :=
+0 4 4
+;

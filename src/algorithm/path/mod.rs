@@ -6,8 +6,8 @@ use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::Instructions;
 
-pub mod greedy_shortest_paths;
-mod time_graph;
+//pub mod greedy_shortest_paths;
+//mod time_graph;
 
 pub trait PathAlgorithm<'p, 's, 'a> {
     fn instantiate(

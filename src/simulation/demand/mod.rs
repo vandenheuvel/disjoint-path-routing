@@ -4,7 +4,7 @@ use simulation::plan::Vertex;
 pub mod uniform;
 
 pub trait Demand {
-    fn create(seed: &[usize]) -> Self
+    fn create(seed: [u8; 32]) -> Self
     where
         Self: Sized;
     fn generate(&mut self, plan: &Plan, nr_requests: u64) -> Vec<Request>;
@@ -14,4 +14,10 @@ pub trait Demand {
 pub struct Request {
     pub from: Vertex,
     pub to: Vertex,
+}
+
+impl Request {
+    pub fn distance(&self) -> u64 {
+        self.from.distance(self.to)
+    }
 }

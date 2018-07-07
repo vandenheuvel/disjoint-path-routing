@@ -9,7 +9,7 @@ pub struct Uniform {
 }
 
 impl Demand for Uniform {
-    fn create(seed: &[usize]) -> Uniform {
+    fn create(seed: [u8; 32]) -> Uniform {
         Uniform {
             rng: StdRng::from_seed(seed),
         }

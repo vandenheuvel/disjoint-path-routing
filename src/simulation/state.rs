@@ -23,11 +23,10 @@ impl State {
         } in &self.robot_states
         {
             match (parcel_id, vertex) {
-                (Some(parcel), Some(Vertex { x, y })) => {
+                (Some(parcel), Vertex { x, y }) => {
                     writer.write(format!("{},{},{},{}\n", robot_id, parcel, x, y).as_bytes())?;
                 }
-                (None, None) => (),
-                _ => panic!("Either parcel and placed or neither"),
+                (None, _) => (),
             }
         }
         writer.write("###\n".as_bytes())?;
@@ -39,7 +38,7 @@ impl State {
 pub struct RobotState {
     pub robot_id: usize,
     pub parcel_id: Option<usize>,
-    pub vertex: Option<Vertex>,
+    pub vertex: Vertex,
 }
 
 #[derive(Debug, PartialEq)]
