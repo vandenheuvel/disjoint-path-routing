@@ -37,6 +37,24 @@ enum PathType {
 }
 
 impl<'p, 's, 'a> GreedyShortestPaths<'p, 's, 'a> {
+    fn new(
+        plan: &'p impl Plan,
+        settings: &'s Settings,
+        assignment_algorithm: Box<impl AssignmentAlgorithm<'p, 's> + 'a>,
+    ) -> GreedyShortestPaths<'p, 's, 'a> {
+        GreedyShortestPaths {
+            time_graph: TimeGraph::from_plan(plan, settings.total_time),
+            settings,
+            assignment_algorithm,
+
+            time: 1,
+            assignment: repeat(Vec::with_capacity(0))
+                .take(settings.nr_robots)
+                .collect(),
+            active_paths: repeat(None).take(settings.nr_robots).collect(),
+            active_requests: FnvHashSet::default(),
+        }
+    }
     /// Requires up-to-date assignments
     fn update_paths(&mut self, requests: &FnvHashMap<usize, Request>, last_state: &State) {
         for (robot, task) in self.active_paths.iter_mut().enumerate() {
@@ -139,24 +157,6 @@ impl<'p, 's, 'a> GreedyShortestPaths<'p, 's, 'a> {
 }
 
 impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for GreedyShortestPaths<'p, 's, 'a> {
-    fn instantiate(
-        plan: &'p impl Plan,
-        settings: &'s Settings,
-        assignment_algorithm: Box<impl AssignmentAlgorithm<'p, 's> + 'a>,
-    ) -> GreedyShortestPaths<'p, 's, 'a> {
-        GreedyShortestPaths {
-            time_graph: TimeGraph::from_plan(plan, settings.total_time),
-            settings,
-            assignment_algorithm,
-
-            time: 1,
-            assignment: repeat(Vec::with_capacity(0))
-                .take(settings.maximum_robots)
-                .collect(),
-            active_paths: repeat(None).take(settings.maximum_robots).collect(),
-            active_requests: FnvHashSet::default(),
-        }
-    }
     fn initialize(&mut self) -> Result<(), NoSolutionError> {
         Ok(())
     }

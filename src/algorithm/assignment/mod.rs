@@ -6,9 +6,6 @@ pub mod greedy_makespan;
 pub mod makespan_single_vehicle_ilp;
 pub mod multiple_vehicle_ilp;
 
-const RUN_FILE_NAME: &str = "run.run";
-const DAT_FILE_NAME: &str = "data.dat";
-
 pub trait AssignmentAlgorithm<'p, 's> {
     fn calculate_assignment(
         &mut self,

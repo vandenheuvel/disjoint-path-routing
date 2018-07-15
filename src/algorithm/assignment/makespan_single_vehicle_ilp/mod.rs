@@ -18,9 +18,9 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::thread::spawn;
 use std::thread::JoinHandle;
-use algorithm::assignment::DAT_FILE_NAME;
-use algorithm::assignment::RUN_FILE_NAME;
 use algorithm::assignment::LPIOError;
+use algorithm::DAT_FILE_NAME;
+use algorithm::RUN_FILE_NAME;
 
 const MOD_FILE_PATH: &str = "/home/bram/git/disjoint-path-routing/src/algorithm/assignment/makespan_single_vehicle_ilp/makespan_single_vehicle_ilp.mod";
 const WORKING_DIRECTORY: &str = "makespan_single_vehicle_ilp";
@@ -95,7 +95,7 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
     }
     fn parse_ampl_output(output: Vec<u8>) -> (usize, FnvHashMap<usize, usize>, usize) {
         let output = String::from_utf8(output).unwrap();
-        let mut segments = output.lines().collect::<Vec<_>>();
+        let segments = output.lines().collect::<Vec<_>>();
         let mut segments = segments.split(|&line| line == ";");
 
         let mut get_lines = |pattern: &str| {

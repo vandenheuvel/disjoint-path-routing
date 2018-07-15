@@ -28,7 +28,7 @@ impl<'p, 's> AssignmentAlgorithm<'p, 's> for GreedyMakespan<'p, 's> {
         let mut availability = availability
             .iter()
             .enumerate()
-            .map(|(robot, time)| (robot, Reverse(time.0)))
+            .map(|(robot, &(time, _))| (robot, Reverse(time)))
             .collect::<PriorityQueue<_, _>>();
 
         let mut assigned_paths = repeat(Vec::new())

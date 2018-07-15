@@ -5,4 +5,4 @@ option show_stats 0;
 option gurobi_options 'timelim 3';
 solve;
 option omit_zero_rows 1;
-display Time_Robot_Location;
+display {r in ROBOTS, i in TIMES_ROBOTS_LOCATIONS[T, r]} Time_Robot_Location[1, r, i];

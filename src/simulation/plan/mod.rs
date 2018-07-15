@@ -4,6 +4,7 @@ use std::io::BufWriter;
 use std::io::Write;
 
 use itertools::Itertools;
+use fnv::FnvHashSet;
 
 pub mod middle_terminals;
 pub mod one_three_rectangle;
@@ -36,7 +37,33 @@ pub trait Plan: Send + Sync {
         writer.flush()
     }
     fn path_length(&self, from: Vertex, to: Vertex) -> u64 {
+        // TODO
         from.distance(to)
+    }
+    fn neighborhood(&self, vertex: Vertex, radius: u64) -> Vec<Vertex> {
+        debug_assert!(self.contains(&vertex));
+
+        let mut discovered = FnvHashSet::default();
+        discovered.insert(vertex);
+        let mut new_discovered = FnvHashSet::default();
+        new_discovered.insert(vertex);
+
+        for _ in 0..radius {
+            let mut discovering = FnvHashSet::default();
+
+            for &vertex in new_discovered.iter() {
+                for neighbor in self.neighbors(&vertex) {
+                    if !discovered.contains(&neighbor) {
+                        discovering.insert(neighbor);
+                    }
+                    discovered.insert(neighbor);
+                }
+            }
+
+            new_discovered = discovering;
+        }
+
+        discovered.into_iter().collect()
     }
 }
 

@@ -9,14 +9,14 @@ use simulation::settings::Settings;
 use std::path::Path;
 use std::path::PathBuf;
 use std::env::temp_dir;
-use algorithm::assignment::DAT_FILE_NAME;
-use algorithm::assignment::RUN_FILE_NAME;
 use std::fs::create_dir;
 use std::fs::remove_dir_all;
 use std::process::Command;
 use algorithm::assignment::LPIOError;
 use std::fs::File;
 use std::io::Write;
+use algorithm::RUN_FILE_NAME;
+use algorithm::DAT_FILE_NAME;
 
 const MOD_FILE_PATH: &str = "/home/bram/git/disjoint-path-routing/src/algorithm/assignment/multiple_vehicle_ilp/multiple_vehicle_ilp.mod";
 const WORKING_DIRECTORY: &str = "multiple_vehicle_ilp";
