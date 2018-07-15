@@ -1,5 +1,4 @@
 use algorithm::assignment::AssignmentAlgorithm;
-use algorithm::path::time_graph::TimeGraph;
 use algorithm::path::PathAlgorithm;
 use algorithm::NoSolutionError;
 use fnv::FnvHashMap;
@@ -15,6 +14,9 @@ use simulation::MoveInstruction;
 use simulation::PlacementInstruction;
 use simulation::RemovalInstruction;
 use std::iter::repeat;
+use algorithm::path::greedy_shortest_paths::time_graph::TimeGraph;
+
+pub mod time_graph;
 
 pub struct GreedyShortestPaths<'p, 's, 'a> {
     time_graph: TimeGraph<'p>,

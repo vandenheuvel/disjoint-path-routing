@@ -6,17 +6,10 @@ use simulation::settings::Settings;
 use simulation::state::History;
 use simulation::Instructions;
 
-//pub mod greedy_shortest_paths;
-//mod time_graph;
+pub mod greedy_shortest_paths;
+pub mod ilp;
 
 pub trait PathAlgorithm<'p, 's, 'a> {
-    fn instantiate(
-        plan: &'p impl Plan,
-        settings: &'s Settings,
-        assignment_algorithm: Box<impl AssignmentAlgorithm<'p, 's> + 'a>,
-    ) -> Self
-    where
-        Self: Sized;
     fn initialize(&mut self) -> Result<(), NoSolutionError>;
     fn next_step(&mut self, history: &History) -> Instructions;
     fn contains_new_requests(&self, history: &History) -> bool {
