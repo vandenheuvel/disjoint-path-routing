@@ -19,7 +19,7 @@ pub enum Instruction {
     Remove(RemovalInstruction),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct MoveInstruction {
     pub robot_id: usize,
     pub vertex: Vertex,

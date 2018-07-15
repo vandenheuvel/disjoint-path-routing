@@ -199,7 +199,7 @@ impl Path {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+
     use algorithm::assignment::greedy_makespan::GreedyMakespan;
     use simulation::plan::one_three_rectangle::OneThreeRectangle;
 

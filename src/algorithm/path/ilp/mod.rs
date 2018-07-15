@@ -12,12 +12,16 @@ use std::env::temp_dir;
 use algorithm::DAT_FILE_NAME;
 use algorithm::RUN_FILE_NAME;
 use std::fs::create_dir;
+use std::fs::remove_dir_all;
 use simulation::plan::Vertex;
 use fnv::FnvHashMap;
 use std::fs::File;
 use fnv::FnvHashSet;
 use std::io::Write;
 use std::process::Command;
+use simulation::RemovalInstruction;
+use simulation::MoveInstruction;
+use simulation::PlacementInstruction;
 
 
 const MOD_FILE_PATH: &str = "/home/bram/git/disjoint-path-routing/src/algorithm/path/ilp/ilp.mod";
@@ -38,8 +42,8 @@ pub struct ILPSteps<'p, 's, 'a> {
 impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
     fn new(
         plan: &'p impl Plan,
-        assignment_algorithm: Box<impl AssignmentAlgorithm<'p, 's> + 'a>,
         settings: &'s Settings,
+        assignment_algorithm: Box<impl AssignmentAlgorithm<'p, 's> + 'a>,
         steps_at_once: u64,
     ) -> ILPSteps<'p, 's, 'a> {
         ILPSteps {
@@ -47,7 +51,7 @@ impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
             plan,
             assignment_algorithm,
 
-            steps_at_once: 3,
+            steps_at_once,
             assignment: Vec::new(),
             assignment_initialized: false,
         }
@@ -59,14 +63,14 @@ impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
         let dat_path = working_directory.join(DAT_FILE_NAME);
         let run_path = working_directory.join(RUN_FILE_NAME);
 
-        (model_path, working_directory, dat_path, run_path)
+        (working_directory, dat_path, run_path, model_path)
     }
     /// Robot, Time, List of locations
     /// Robot, list of (location, cost)
     fn calculate_parameters(&self, state: &State) -> (Vec<Vec<Vec<Vertex>>>, Vec<Vec<(Vertex, u64)>>) {
         let locations = (0..self.settings.nr_robots)
             .map(|robot| {
-                (0..self.steps_at_once)
+                (0..(self.steps_at_once) + 1)
                     .map(|time| self.plan.neighborhood(state.robot_states[robot].vertex, time))
                     .collect::<Vec<_>>()
             })
@@ -76,7 +80,9 @@ impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
         for (robot, times) in locations.iter().enumerate() {
             let mut robot_locations_costs = Vec::new();
             for &location in times.last().unwrap() {
-                let goal_vertex = state.requests.get(&self.assignment[robot][0]).unwrap().from;
+                let request = state.requests.get(&self.assignment[robot][0]).unwrap();
+                println!("{:?}", state.robot_states[robot].parcel_id);
+                let goal_vertex = if state.robot_states[robot].parcel_id.is_some() { request.to } else { request.from };
                 robot_locations_costs.push((location, self.plan.path_length(location, goal_vertex)));
             }
             costs.push(robot_locations_costs);
@@ -104,7 +110,7 @@ impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
 
         for (robot, times) in locations.iter().enumerate() {
             for (time, locations) in times.iter().enumerate() {
-                writeln!(file, "set TIMES_ROBOT_LOCATIONS[{}, {}] :=", time, robot);
+                writeln!(file, "set TIMES_ROBOTS_LOCATIONS[{}, {}] :=", time, robot);
                 for location in locations {
                     writeln!(file, "  {},", vertex_to_usize.get(location).unwrap());
                 }
@@ -145,11 +151,10 @@ impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
         writeln!(file, "data '{}';", data_path.as_ref().to_str().unwrap());
         writeln!(file, "option solver '/home/bram/Downloads/amplide.linux64/gurobi';");
         writeln!(file, "option show_stats 0;");
-        writeln!(file, "gurobi_options 'timelim 1';");
+        writeln!(file, "option gurobi_options 'timelim 1';");
         writeln!(file, "solve;");
         writeln!(file, "option omit_zero_rows 1;");
-        writeln!(file, "display Time_Robot_Location'");
-        file.write("display {r in ROBOTS, i in TIMES_ROBOTS_LOCATIONS[1, r]} Time_Robot_Location[T, r, i];\n".as_bytes());
+        file.write("display {r in ROBOTS, i in TIMES_ROBOTS_LOCATIONS[1, r]} Time_Robot_Location[1, r, i];\n".as_bytes());
     }
     fn execute_model(run_file_path: impl AsRef<Path>) -> String {
         String::from_utf8(Command::new("/home/bram/Downloads/amplide.linux64/ampl")
@@ -158,14 +163,17 @@ impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
             .unwrap().stdout).unwrap()
     }
     fn parse_ampl_output(output: String) -> Vec<usize> {
-        let lines = output
+        let first_lines = output
             .lines()
-            .collect::<Vec<_>>()
-            .split(|line| line == ";")
+            .collect::<Vec<_>>();
+        let first_split = first_lines
+            .split(|&line| line == ";")
             .next()
-            .unwrap()
+            .unwrap();
+        let lines = first_split
             .iter()
             .skip_while(|line| !line.starts_with("Time_Robot_Location["))
+            .skip(1)
             .collect::<Vec<_>>();
 
         let mut end_locations = lines
@@ -173,7 +181,7 @@ impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
             .map(|line| match line.split_whitespace().collect::<Vec<_>>().as_slice() {
                 [robot, location, "1"] => {
                     let robot = robot.parse::<usize>().unwrap();
-                    let location = locdation.parse::<usize>().unwrap();
+                    let location = location.parse::<usize>().unwrap();
 
                     (robot, location)
                 },
@@ -181,13 +189,63 @@ impl <'p, 's, 'a> ILPSteps<'p, 's, 'a> {
             })
             .collect::<Vec<_>>();
 
-        end_locations.sort_by_key(|(robot, _)| robot);
-
+        end_locations.sort_by_key(|&(robot, _)| robot);
         end_locations.into_iter().map(|(_, location)| location).collect()
     }
-    fn get_instructions(history: &History, new_locations: Vec<Vertex>) -> Instructions {
-        unimplemented!();
+    fn get_instructions(&mut self, history: &History, new_locations: Vec<Vertex>) -> Instructions {
+        let mut instructions = Instructions {
+            movements: Vec::new(),
+            placements: Vec::new(),
+            removals: Vec::new(),
+        };
+
+        for (robot_id, new_location) in new_locations.into_iter().enumerate() {
+            let previous_state = history.last_robot_state(robot_id);
+            let previous_location = previous_state.vertex;
+            if let Some(parcel) = previous_state.parcel_id {
+                let goal_location = history.last_state().requests.get(&parcel).unwrap().to;
+                if previous_location == goal_location {
+                    instructions.removals.push(RemovalInstruction {
+                        parcel,
+                        robot_id,
+                        vertex: previous_location,
+                    });
+                } else {
+                    instructions.movements.push(MoveInstruction {
+                        robot_id,
+                        vertex: new_location,
+                    });
+                }
+            } else {
+                if let Some(request_id) = self.assignment[robot_id].first() {
+                    let goal_location = history.last_state().requests.get(&request_id).unwrap().from;
+                    if previous_location == goal_location {
+                        instructions.placements.push(PlacementInstruction {
+                            robot_id,
+                            parcel: *request_id,
+                            vertex: new_location,
+                        });
+                        self.assignment[robot_id].remove(0);
+                    } else {
+                        instructions.movements.push(MoveInstruction {
+                            robot_id,
+                            vertex: new_location,
+                        });
+                    }
+                } else {
+                    if new_location != previous_location {
+                        instructions.movements.push(MoveInstruction {
+                            robot_id,
+                            vertex: new_location,
+                        });
+                    }
+                }
+            }
+        }
+
+        instructions
     }
+
 }
 
 impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for ILPSteps<'p, 's, 'a> {
@@ -210,19 +268,75 @@ impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for ILPSteps<'p, 's, 'a> {
 
         let (locations, costs) = self.calculate_parameters(history.last_state());
         let (working_directory, data_path, run_file_path, model_path) = ILPSteps::get_paths();
-        if !working_directory.exists() {
-            create_dir(working_directory);
+        if working_directory.exists() {
+            remove_dir_all(working_directory.as_path());
         }
+        create_dir(working_directory);
         let vertex_map = self.write_data_file(data_path.as_path(), locations, costs);
         ILPSteps::write_run_file(run_file_path.as_path(), model_path.as_path(), data_path.as_path());
         let output = ILPSteps::execute_model(run_file_path.as_path());
         let new_positions = ILPSteps::parse_ampl_output(output);
         let new_positions = new_positions
             .into_iter()
-            .map(|id| vertex_map.get(&id).unwrap())
+            .map(|id| *vertex_map.get(&id).unwrap())
             .collect();
-        let instructions = ILPSteps::get_instructions(history, new_states);
+        let instructions = self.get_instructions(history, new_positions);
 
         instructions
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use fnv::FnvHashMap;
+
+    use algorithm::path::ilp::ILPSteps;
+    use algorithm::assignment::greedy_makespan::GreedyMakespan;
+    use algorithm::path::PathAlgorithm;
+    use simulation::settings::Settings;
+    use simulation::plan::one_three_rectangle::OneThreeRectangle;
+    use simulation::state::History;
+    use simulation::state::State;
+    use simulation::state::RobotState;
+    use simulation::plan::Vertex;
+    use simulation::MoveInstruction;
+    use simulation::demand::Request;
+
+    #[test]
+    fn test() {
+        let plan = OneThreeRectangle::new(10, 10);
+        let settings = Settings {
+            total_time: 10,
+            nr_robots: 1,
+            nr_requests: 1,
+            output_file: None,
+        };
+        let requests = map!
+        [
+            0 => Request {
+                from: Vertex { x: 0, y: 1 },
+                to: Vertex { x: 2, y: 1 },
+            },
+        ];
+        let assignment_algorithm = Box::new(GreedyMakespan::new(&plan, &settings));
+        let mut algorithm = ILPSteps::new(&plan, &settings, assignment_algorithm, 2);
+
+        let history = History {
+            states: vec![State {
+                robot_states: vec![RobotState {
+                    robot_id: 0,
+                    parcel_id: Some(0),
+                    vertex: Vertex { x: 2, y: 4, },
+                }],
+                requests,
+            }],
+            calculation_times: Vec::new(),
+        };
+
+        assert_eq!(algorithm.next_step(&history).movements, vec![MoveInstruction {
+            robot_id: 0,
+            vertex: Vertex { x: 2, y: 3, },
+        }]);
     }
 }
