@@ -13,5 +13,5 @@ pub mod macros;
 pub mod algorithm;
 pub mod simulation;
 
-//#[cfg(test)]
-//mod test;
+#[cfg(test)]
+mod test;

@@ -106,6 +106,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         while self.history.last_state().requests.len() > 0
             && self.history.time() < self.settings.total_time
         {
+            println!("{:?}", self.history.last_state());
+            println!("{}", self.history.time());
             let instructions = self.algorithm.next_step(&self.history);
             self.new_state(instructions)?;
             if let Some(ref mut writer) = self.output_writer {
@@ -271,7 +273,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             vertex,
         } = instruction;
 
-        if used_vertices.contains_key(&vertex) {
+        if used_vertices.contains_key(&vertex) && used_vertices.get(&vertex) != Some(&robot_id) {
             return Some(IllegalPlacementError::from(
                 instruction,
                 "Vertex used in previous time step".to_string(),
@@ -382,14 +384,24 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 //
 //#[cfg(test)]
 //mod test {
-//    use super::*;
+//
 //    use algorithm::assignment::greedy_makespan::GreedyMakespan;
-//    use algorithm::assignment::AssignmentAlgorithm;
-//    use algorithm::path::greedy_shortest_paths::GreedyShortestPaths;
 //    use algorithm::path::PathAlgorithm;
+//    use algorithm::path::greedy_shortest_paths::GreedyShortestPaths;
 //    use simulation::demand::uniform::Uniform;
 //    use simulation::plan::one_three_rectangle::OneThreeRectangle;
-//    use simulation::settings::AssignmentMethod::Single;
+//    use simulation::demand::Demand;
+//    use simulation::settings::Settings;
+//    use simulation::simulation::Simulation;
+//    use simulation::state::RobotState;
+//    use fnv::FnvHashMap;
+//    use fnv::FnvHashSet;
+//    use simulation::plan::Vertex;
+//    use simulation::demand::Request;
+//    use simulation::PlacementInstruction;
+//    use simulation::state::History;
+//    use simulation::state::State;
+//    use simulation::MoveInstruction;
 //
 //    #[test]
 //    fn test_process_placement_instructions() {
@@ -397,16 +409,13 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 //        let plan = OneThreeRectangle::new(3, 3);
 //        let settings = Settings {
 //            total_time: 6,
-//            maximum_robots: 2,
+//            nr_robots: 2,
 //            nr_requests: 2,
-//            real_time: false,
 //            output_file: None,
-//            assignment: Single,
 //        };
-//        let mut assignment_algorithm = Box::new(
-//            <GreedyMakespan as AssignmentAlgorithm>::instantiate(&plan, &settings),
+//        let mut assignment_algorithm = Box::new(GreedyMakespan::new(&plan, &settings),
 //        );
-//        let mut algorithm = Box::new(GreedyShortestPaths::instantiate(
+//        let mut algorithm = Box::new(GreedyShortestPaths::new(
 //            &plan,
 //            &settings,
 //            assignment_algorithm,
@@ -457,7 +466,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 //            RobotState {
 //                robot_id: 0,
 //                parcel_id: Some(0),
-//                vertex: Some(Vertex { x: 0, y: 1 }),
+//                vertex: Vertex { x: 0, y: 1 },
 //            },
 //            RobotState {
 //                robot_id: 1,
@@ -477,16 +486,12 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 //        let plan = OneThreeRectangle::new(3, 3);
 //        let settings = Settings {
 //            total_time: 6,
-//            maximum_robots: 2,
+//            nr_robots: 2,
 //            nr_requests: 1,
-//            real_time: false,
 //            output_file: None,
-//            assignment: Single,
 //        };
 //
-//        let assignment_algorithm = Box::new(
-//            <GreedyMakespan as AssignmentAlgorithm>::instantiate(&plan, &settings),
-//        );
+//        let assignment_algorithm = Box::new(GreedyMakespan::new(&plan, &settings));
 //        let algorithm = Box::new(GreedyShortestPaths::instantiate(
 //            &plan,
 //            &settings,
@@ -516,12 +521,12 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 //                    RobotState {
 //                        robot_id: 0,
 //                        parcel_id: Some(0),
-//                        vertex: Some(Vertex { x: 1, y: 1 }),
+//                        vertex: Vertex { x: 1, y: 1 },
 //                    },
 //                    RobotState {
 //                        robot_id: 1,
 //                        parcel_id: Some(1),
-//                        vertex: Some(Vertex { x: 1, y: 0 }),
+//                        vertex: Vertex { x: 1, y: 0 },
 //                    },
 //                ],
 //                requests: requests.clone(),
@@ -561,16 +566,12 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 //        let plan = OneThreeRectangle::new(3, 3);
 //        let settings = Settings {
 //            total_time: 6,
-//            maximum_robots: 2,
+//            nr_robots: 2,
 //            nr_requests: 1,
-//            real_time: false,
 //            output_file: None,
-//            assignment: Single,
 //        };
 //
-//        let assignment_algorithm = Box::new(
-//            <GreedyMakespan as AssignmentAlgorithm>::instantiate(&plan, &settings),
-//        );
+//        let assignment_algorithm = Box::new(GreedyMakespan::new(&plan, &settings));
 //        let algorithm = Box::new(GreedyShortestPaths::instantiate(
 //            &plan,
 //            &settings,
@@ -600,12 +601,12 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 //                    RobotState {
 //                        robot_id: 0,
 //                        parcel_id: Some(0),
-//                        vertex: Some(Vertex { x: 1, y: 1 }),
+//                        vertex: Vertex { x: 1, y: 1 },
 //                    },
 //                    RobotState {
 //                        robot_id: 1,
 //                        parcel_id: Some(1),
-//                        vertex: Some(Vertex { x: 0, y: 0 }),
+//                        vertex: Vertex { x: 0, y: 0 },
 //                    },
 //                ],
 //                requests: requests.clone(),
@@ -644,12 +645,12 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
 //            RobotState {
 //                robot_id: 0,
 //                parcel_id: Some(0),
-//                vertex: Some(Vertex { x: 2, y: 1 }),
+//                vertex: Vertex { x: 2, y: 1 },
 //            },
 //            RobotState {
 //                robot_id: 1,
 //                parcel_id: Some(1),
-//                vertex: Some(Vertex { x: 0, y: 1 }),
+//                vertex: Vertex { x: 0, y: 1 },
 //            },
 //        ];
 //        let expected_newly_used_vertices = vec![Vertex { x: 2, y: 1 }, Vertex { x: 0, y: 1 }]

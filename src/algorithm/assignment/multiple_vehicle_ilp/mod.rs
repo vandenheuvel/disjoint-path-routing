@@ -2,21 +2,21 @@ use fnv::FnvHashMap;
 use itertools::Itertools;
 
 use algorithm::assignment::AssignmentAlgorithm;
+use algorithm::assignment::LPIOError;
+use algorithm::DAT_FILE_NAME;
+use algorithm::RUN_FILE_NAME;
 use simulation::demand::Request;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
 use simulation::settings::Settings;
-use std::path::Path;
-use std::path::PathBuf;
 use std::env::temp_dir;
 use std::fs::create_dir;
 use std::fs::remove_dir_all;
-use std::process::Command;
-use algorithm::assignment::LPIOError;
 use std::fs::File;
 use std::io::Write;
-use algorithm::RUN_FILE_NAME;
-use algorithm::DAT_FILE_NAME;
+use std::path::Path;
+use std::path::PathBuf;
+use std::process::Command;
 
 const MOD_FILE_PATH: &str = "/home/bram/git/disjoint-path-routing/src/algorithm/assignment/multiple_vehicle_ilp/multiple_vehicle_ilp.mod";
 const WORKING_DIRECTORY: &str = "multiple_vehicle_ilp";
@@ -39,10 +39,13 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
 
         (model_path, working_directory, dat_path, run_path)
     }
-    fn calculate_start_costs(availability: &Vec<(usize, Vertex)>, requests: &FnvHashMap<usize, Request>) -> Vec<(usize, usize, u64)> {
+    fn calculate_start_costs(
+        availability: &Vec<(usize, Vertex)>,
+        requests: &FnvHashMap<usize, Request>,
+    ) -> Vec<(usize, usize, u64)> {
         let mut costs = Vec::with_capacity(availability.len() * requests.len());
 
-        for &(robot, current_location) in availability.iter() {
+        for (robot, &(time, current_location)) in availability.iter().enumerate() {
             for (&request_id, request) in requests.iter() {
                 let start_distance = current_location.distance(request.from);
                 costs.push((robot, request_id, start_distance + request.distance()));
@@ -51,7 +54,9 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
 
         costs
     }
-    fn calculate_transition_costs(requests: &FnvHashMap<usize, Request>) -> Vec<(usize, usize, u64)> {
+    fn calculate_transition_costs(
+        requests: &FnvHashMap<usize, Request>,
+    ) -> Vec<(usize, usize, u64)> {
         let mut costs = Vec::with_capacity(requests.len() * requests.len());
 
         for (&id1, request1) in requests.iter() {
@@ -63,7 +68,10 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
 
         costs
     }
-    fn calculate_end_costs(availability: &Vec<(usize, Vertex)>, requests: &FnvHashMap<usize, Request>) -> Vec<(usize, usize, u64)> {
+    fn calculate_end_costs(
+        availability: &Vec<(usize, Vertex)>,
+        requests: &FnvHashMap<usize, Request>,
+    ) -> Vec<(usize, usize, u64)> {
         let mut costs = Vec::with_capacity(availability.len() * requests.len());
 
         for &(robot, _) in availability.iter() {
@@ -85,7 +93,7 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
         let mut file = File::create(path).unwrap();
 
         file.write("set ROBOTS :=\n".as_ref());
-        for (robot, _) in availability {
+        for (robot, (_, _)) in availability.iter().enumerate() {
             write!(file, "  {},\n", robot);
         }
         file.write(";\n".as_ref());
@@ -122,14 +130,21 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
 
         Ok(())
     }
-    fn write_run_file<T>(path: T, model_path: T, data_path: T, time_limit: f64) where T: AsRef<Path> {
+    fn write_run_file<T>(path: T, model_path: T, data_path: T, time_limit: f64)
+    where
+        T: AsRef<Path>,
+    {
         let mut file = File::create(path).unwrap();
 
         writeln!(file, "model '{}';", model_path.as_ref().to_str().unwrap());
         writeln!(file, "data '{}';", data_path.as_ref().to_str().unwrap());
         file.write("option solver '/home/bram/Downloads/amplide.linux64/gurobi';\n".as_ref());
         file.write("option show_stats 0;\n".as_ref());
-        writeln!(file, "option gurobi_options 'timelim {} bestbound 1';", time_limit);
+        writeln!(
+            file,
+            "option gurobi_options 'timelim {} bestbound 1';",
+            20
+        );
         file.write("solve;\n".as_ref());
         file.write("option omit_zero_rows 1;\n".as_ref());
         file.write("option display_1col 1000000;\n".as_ref());
@@ -139,17 +154,23 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
         file.write("option omit_zero_rows 0;\n".as_ref());
         file.write("display Robot_Number;\n".as_ref());
     }
-    fn calculate_time_limit(availability: &Vec<(usize, Vertex)>, requests: &FnvHashMap<usize, Request>) -> f64 {
-        requests
-            .iter()
-            .map(|(_, r)| r.distance())
-            .sum::<u64>() as f64 / availability.len() as f64
+    fn calculate_time_limit(
+        availability: &Vec<(usize, Vertex)>,
+        requests: &FnvHashMap<usize, Request>,
+    ) -> f64 {
+        requests.iter().map(|(_, r)| r.distance()).sum::<u64>() as f64 / availability.len() as f64
     }
-    fn parse_ampl_output(output: Vec<u8>) -> (FnvHashMap<usize, usize>, FnvHashMap<(usize, usize), usize>, FnvHashMap<(usize, usize), usize>, u64, f64) {
+    fn parse_ampl_output(
+        output: Vec<u8>,
+    ) -> (
+        FnvHashMap<usize, usize>,
+        FnvHashMap<(usize, usize), usize>,
+        FnvHashMap<(usize, usize), usize>,
+        u64,
+        f64,
+    ) {
         let output = String::from_utf8(output).unwrap();
-        let lines = output
-            .lines()
-            .collect::<Vec<_>>();
+        let lines = output.lines().collect::<Vec<_>>();
 
         let objective = lines
             .iter()
@@ -161,12 +182,16 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
             .unwrap()
             .parse::<u64>()
             .unwrap();
-        let relmipgap = if let Some(line) = lines.iter().skip_while(|line| !line.contains("relmipgap")).next() {
-            line
-                .split_whitespace()
+        let relmipgap = if let Some(line) = lines
+            .iter()
+            .skip_while(|line| !line.contains("relmipgap"))
+            .next()
+        {
+            line.split_whitespace()
                 .last()
                 .unwrap()
-                .parse::<f64>().unwrap()
+                .parse::<f64>()
+                .unwrap()
         } else {
             0 as f64
         };
@@ -198,14 +223,20 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
     fn parse_lines_2d(lines: Vec<&str>) -> FnvHashMap<usize, usize> {
         lines
             .into_iter()
-            .map(|line| match line.split_whitespace().collect_vec().as_slice() {
-                [first, second, "1"] => {
-                    if let (Ok(first), Ok(second)) = (first.parse::<usize>(), second.parse::<usize>()) {
-                        (first, second)
-                    } else { panic!() }
+            .map(
+                |line| match line.split_whitespace().collect_vec().as_slice() {
+                    [first, second, "1"] => {
+                        if let (Ok(first), Ok(second)) =
+                            (first.parse::<usize>(), second.parse::<usize>())
+                        {
+                            (first, second)
+                        } else {
+                            panic!()
+                        }
+                    }
+                    _ => panic!(),
                 },
-                _ => panic!(),
-            })
+            )
             .collect()
     }
     fn parse_transitions(lines: Vec<&str>) -> FnvHashMap<(usize, usize), usize> {
@@ -217,23 +248,44 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
     fn parse_lines_3d(lines: Vec<&str>) -> FnvHashMap<(usize, usize), usize> {
         lines
             .into_iter()
-            .map(|line| match line.split_whitespace().collect_vec().as_slice() {
-                [first, second, third, "1"] => {
-                    if let (Ok(first), Ok(second), Ok(third)) = (first.parse::<usize>(), second.parse::<usize>(), third.parse::<usize>()) {
-                        (first, second, third)
-                    } else { panic!() }
+            .map(
+                |line| match line.split_whitespace().collect_vec().as_slice() {
+                    [first, second, third, "1"] => {
+                        if let (Ok(first), Ok(second), Ok(third)) = (
+                            first.parse::<usize>(),
+                            second.parse::<usize>(),
+                            third.parse::<usize>(),
+                        ) {
+                            (first, second, third)
+                        } else {
+                            panic!()
+                        }
+                    }
+                    _ => panic!(),
                 },
-                _ => panic!(),
-            })
+            )
             .map(|(first, second, third)| ((first, second), third))
             .collect()
     }
-    fn reconstruct_assignment(firsts: FnvHashMap<usize, usize>, transitions: FnvHashMap<(usize, usize), usize>, lasts: FnvHashMap<(usize, usize), usize>) -> Vec<Vec<usize>> {
-        let missing = (0..firsts.len()).filter(|i| !firsts.contains_key(i)).collect::<Vec<_>>();
+    fn reconstruct_assignment(
+        firsts: FnvHashMap<usize, usize>,
+        transitions: FnvHashMap<(usize, usize), usize>,
+        lasts: FnvHashMap<(usize, usize), usize>,
+    ) -> Vec<Vec<usize>> {
+        let missing = (0..firsts.len())
+            .filter(|i| !firsts.contains_key(i))
+            .collect::<Vec<_>>();
         let mut assignments = FnvHashMap::default();
 
         for (robot, first_request) in firsts {
-            assignments.insert(robot, MultiVehicleIlpFormulation::reconstruct_transitions(robot, first_request, &transitions));
+            assignments.insert(
+                robot,
+                MultiVehicleIlpFormulation::reconstruct_transitions(
+                    robot,
+                    first_request,
+                    &transitions,
+                ),
+            );
         }
         for robot in missing {
             assignments.insert(robot, Vec::with_capacity(0));
@@ -241,9 +293,16 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
 
         let mut assignments = assignments.into_iter().collect::<Vec<_>>();
         assignments.sort_by_key(|&(robot, _)| robot);
-        assignments.into_iter().map(|(_, assigned)| assigned).collect()
+        assignments
+            .into_iter()
+            .map(|(_, assigned)| assigned)
+            .collect()
     }
-    fn reconstruct_transitions(robot: usize, first_request: usize, transitions: &FnvHashMap<(usize, usize), usize>) -> Vec<usize> {
+    fn reconstruct_transitions(
+        robot: usize,
+        first_request: usize,
+        transitions: &FnvHashMap<(usize, usize), usize>,
+    ) -> Vec<usize> {
         let mut assigned = Vec::new();
         assigned.push(first_request);
 
@@ -290,7 +349,8 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
             .output()
             .unwrap();
 
-        let (_, _, _, objective, relmipgap) = MultiVehicleIlpFormulation::parse_ampl_output(output.stdout);
+        let (_, _, _, objective, relmipgap) =
+            MultiVehicleIlpFormulation::parse_ampl_output(output.stdout);
         (objective, relmipgap)
     }
 }
@@ -331,7 +391,8 @@ impl<'p, 's> AssignmentAlgorithm<'p, 's> for MultiVehicleIlpFormulation<'p, 's> 
             .output()
             .unwrap();
 
-        let (firsts, transitions, lasts, objective, relmipgap) = MultiVehicleIlpFormulation::parse_ampl_output(output.stdout);
+        let (firsts, transitions, lasts, objective, relmipgap) =
+            MultiVehicleIlpFormulation::parse_ampl_output(output.stdout);
         MultiVehicleIlpFormulation::reconstruct_assignment(firsts, transitions, lasts)
     }
 }
@@ -398,11 +459,7 @@ mod test {
                 to: Vertex { x: 0, y: 2, },
             },
         ];
-        let availability = vec!
-        [
-            (0, Vertex { x: 0, y: 0 }),
-            (1, Vertex { x: 10, y: 10, }),
-        ];
+        let availability = vec![(0, Vertex { x: 0, y: 0 }), (1, Vertex { x: 10, y: 10 })];
 
         let result = algorithm.calculate_assignment(&requests, &availability);
         assert_eq!(result, vec![vec![0], vec![1]]);
@@ -415,17 +472,50 @@ mod test {
         let mut algorithm = MultiVehicleIlpFormulation::new(&plan, &settings);
 
         let requests = (0..nr_requests)
-            .map(|i| (i as usize, Request {
-                from: Vertex { x: if i % 2 == 0 {2 * i} else {5 * i + 1}, y: if i % 2 == 1 {4 * i} else { nr_requests * 10 - 5 * i}, },
-                to: Vertex { x: if i % 2 != 0 {nr_requests * 10 - 5 * i} else {2 * i + 4}, y: if i % 2 == 0 {3 * i} else { nr_requests * 8 - 2 * i}, },
-            }))
+            .map(|i| {
+                (
+                    i as usize,
+                    Request {
+                        from: Vertex {
+                            x: if i % 2 == 0 { 2 * i } else { 5 * i + 1 },
+                            y: if i % 2 == 1 {
+                                4 * i
+                            } else {
+                                nr_requests * 10 - 5 * i
+                            },
+                        },
+                        to: Vertex {
+                            x: if i % 2 != 0 {
+                                nr_requests * 10 - 5 * i
+                            } else {
+                                2 * i + 4
+                            },
+                            y: if i % 2 == 0 {
+                                3 * i
+                            } else {
+                                nr_requests * 8 - 2 * i
+                            },
+                        },
+                    },
+                )
+            })
             .collect();
         let availability = (0..nr_robots)
-            .map(|i| (i, Vertex { x: (i as u64 * 31) % 7 + 12, y: (i as u64 * 23) % 11 + 3, }))
+            .map(|i| {
+                (
+                    i,
+                    Vertex {
+                        x: (i as u64 * 31) % 7 + 12,
+                        y: (i as u64 * 23) % 11 + 3,
+                    },
+                )
+            })
             .collect();
 
-
         let result = algorithm.calculate_assignment(&requests, &availability);
-        assert_eq!(result.into_iter().map(|v| v.len() as u64).sum::<u64>(), nr_requests);
+        assert_eq!(
+            result.into_iter().map(|v| v.len() as u64).sum::<u64>(),
+            nr_requests
+        );
     }
 }

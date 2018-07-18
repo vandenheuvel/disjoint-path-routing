@@ -3,8 +3,12 @@ use std::io;
 use std::io::BufWriter;
 use std::io::Write;
 
-use itertools::Itertools;
 use fnv::FnvHashSet;
+use itertools::Itertools;
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::num::Wrapping;
+use fnv::FnvHasher;
 
 pub mod middle_terminals;
 pub mod one_three_rectangle;
@@ -65,6 +69,23 @@ pub trait Plan: Send + Sync {
 
         discovered.into_iter().collect()
     }
+    fn edges(&self) -> FnvHashSet<UndirectedEdge> {
+        let mut edges = FnvHashSet::default();
+
+        let vertices = self.vertices();
+        for v1 in vertices.iter() {
+            for v2 in vertices.iter() {
+                if v1.distance(*v2) == 1 {
+                    edges.insert(UndirectedEdge {
+                        first: *v1,
+                        second: *v2,
+                    });
+                }
+            }
+        }
+
+        edges
+    }
 }
 
 pub trait Rectangle: Plan {
@@ -81,15 +102,31 @@ pub trait Rectangle: Plan {
     fn y_size(&self) -> u64;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq)]
 pub struct UndirectedEdge {
-    first: Vertex,
-    second: Vertex,
+    pub first: Vertex,
+    pub second: Vertex,
 }
 impl PartialEq for UndirectedEdge {
     fn eq(&self, other: &UndirectedEdge) -> bool {
         let &UndirectedEdge { first, second } = other;
         self.first == first && self.second == second || self.first == second && self.second == first
+    }
+}
+impl Hash for UndirectedEdge {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let mut first_hasher = FnvHasher::with_key(0);
+        self.first.hash(&mut first_hasher);
+        let first_hash = first_hasher.finish();
+
+        let mut second_hasher = FnvHasher::with_key(0);
+        self.second.hash(&mut second_hasher);
+        let second_hash = second_hasher.finish();
+
+        let first_wrapped = Wrapping(first_hash);
+        let second_wrapped = Wrapping(second_hash);
+        let result = first_wrapped + second_wrapped;
+        result.hash(state);
     }
 }
 

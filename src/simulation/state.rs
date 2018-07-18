@@ -25,8 +25,10 @@ impl State {
             match (parcel_id, vertex) {
                 (Some(parcel), Vertex { x, y }) => {
                     writer.write(format!("{},{},{},{}\n", robot_id, parcel, x, y).as_bytes())?;
-                }
-                (None, _) => (),
+                },
+                (_, Vertex { x, y }) => {
+                    writer.write(format!("{},{},{},{}\n", robot_id, -1, x, y).as_bytes())?;
+                },
             }
         }
         writer.write("###\n".as_bytes())?;

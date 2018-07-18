@@ -2,6 +2,9 @@ use itertools::Itertools;
 
 use algorithm::assignment::greedy_makespan::GreedyMakespan;
 use algorithm::assignment::AssignmentAlgorithm;
+use algorithm::assignment::LPIOError;
+use algorithm::DAT_FILE_NAME;
+use algorithm::RUN_FILE_NAME;
 use fnv::FnvHashMap;
 use simulation::demand::Request;
 use simulation::plan::Plan;
@@ -18,9 +21,6 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::thread::spawn;
 use std::thread::JoinHandle;
-use algorithm::assignment::LPIOError;
-use algorithm::DAT_FILE_NAME;
-use algorithm::RUN_FILE_NAME;
 
 const MOD_FILE_PATH: &str = "/home/bram/git/disjoint-path-routing/src/algorithm/assignment/makespan_single_vehicle_ilp/makespan_single_vehicle_ilp.mod";
 const WORKING_DIRECTORY: &str = "makespan_single_vehicle_ilp";
@@ -63,7 +63,8 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
                 .arg(run_path)
                 .output()
                 .unwrap();
-            let (first, transitions, last) = MakespanSingleVehicleILP::parse_ampl_output(output.stdout);
+            let (first, transitions, last) =
+                MakespanSingleVehicleILP::parse_ampl_output(output.stdout);
             MakespanSingleVehicleILP::reconstruct_request_order(first, transitions, last)
         })
     }
@@ -73,7 +74,11 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
         }
         create_dir(directory).unwrap();
     }
-    fn reconstruct_request_order(first: usize, ones: FnvHashMap<usize, usize>, last: usize) -> Vec<usize> {
+    fn reconstruct_request_order(
+        first: usize,
+        ones: FnvHashMap<usize, usize>,
+        last: usize,
+    ) -> Vec<usize> {
         let mut requests = Vec::new();
         requests.push(first);
 
@@ -87,7 +92,9 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
                     if *request == last {
                         break;
                     }
-                } else { panic!() }
+                } else {
+                    panic!()
+                }
             }
         }
 
@@ -112,16 +119,31 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
         let transitions = get_lines("Transition");
         let last = get_lines("Last_Request");
 
-        let first = first[0].split_whitespace().next().unwrap().parse::<usize>().unwrap();
-        let transitions = transitions.into_iter().map(|line| match line.split_whitespace().collect_vec().as_slice() {
-            [i, j, "1"] => {
-                let from = i.parse::<usize>().unwrap();
-                let to = j.parse::<usize>().unwrap();
-                (from, to)
-            }
-            _ => panic!(),
-        }).collect();
-        let last = last[0].split_whitespace().next().unwrap().parse::<usize>().unwrap();
+        let first = first[0]
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        let transitions = transitions
+            .into_iter()
+            .map(
+                |line| match line.split_whitespace().collect_vec().as_slice() {
+                    [i, j, "1"] => {
+                        let from = i.parse::<usize>().unwrap();
+                        let to = j.parse::<usize>().unwrap();
+                        (from, to)
+                    }
+                    _ => panic!(),
+                },
+            )
+            .collect();
+        let last = last[0]
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
 
         (first, transitions, last)
     }
@@ -130,7 +152,7 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
         assigned_requests: &Vec<usize>,
         first_distances: Vec<(usize, u64)>,
         transition_distances: Vec<(usize, usize, u64)>,
-        last_distances: Vec<(usize, u64)>
+        last_distances: Vec<(usize, u64)>,
     ) -> Result<(), LPIOError> {
         let mut file = File::create(path).unwrap();
 
@@ -190,7 +212,11 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
         start_vertex: Vertex,
         assigned_requests: &Vec<usize>,
         requests: &FnvHashMap<usize, Request>,
-    ) -> (Vec<(usize, u64)>, Vec<(usize, usize, u64)>, Vec<(usize, u64)>) {
+    ) -> (
+        Vec<(usize, u64)>,
+        Vec<(usize, usize, u64)>,
+        Vec<(usize, u64)>,
+    ) {
         let requests = assigned_requests
             .into_iter()
             .map(|request_id| (*request_id, requests.get(&request_id).unwrap()))
@@ -200,14 +226,15 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
             .iter()
             .map(|&(id, request)| (id as usize, start_vertex.distance(request.from)))
             .collect();
-        let transition_distances = requests.iter().cartesian_product(requests.iter()).map(
-            |(&(i, request_i), &(j, request_j))| {
-                (i, j, request_i.to.distance(request_j.from))
-            },
-        ).collect();
-        let last_distances = requests.iter().map(|&(id, request)| {
-            (id, self.calculate_last_distance(start_vertex, request.to))
-        }).collect();
+        let transition_distances = requests
+            .iter()
+            .cartesian_product(requests.iter())
+            .map(|(&(i, request_i), &(j, request_j))| (i, j, request_i.to.distance(request_j.from)))
+            .collect();
+        let last_distances = requests
+            .iter()
+            .map(|&(id, request)| (id, self.calculate_last_distance(start_vertex, request.to)))
+            .collect();
 
         (first_distances, transition_distances, last_distances)
     }

@@ -31,13 +31,14 @@ pub struct GreedyShortestPaths<'p, 's, 'a> {
     active_requests: FnvHashSet<usize>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum PathType {
     Pickup(Path),
     Delivery(Path),
 }
 
 impl<'p, 's, 'a> GreedyShortestPaths<'p, 's, 'a> {
-    fn new(
+    pub fn new(
         plan: &'p impl Plan,
         settings: &'s Settings,
         assignment_algorithm: Box<impl AssignmentAlgorithm<'p, 's> + 'a>,
@@ -130,7 +131,6 @@ impl<'p, 's, 'a> GreedyShortestPaths<'p, 's, 'a> {
                     vertex,
                 });
             }
-            (None, None) => (),
         }
     }
     fn update_assignment(&mut self, requests: &FnvHashMap<usize, Request>) {
@@ -202,15 +202,20 @@ mod test {
 
     use algorithm::assignment::greedy_makespan::GreedyMakespan;
     use simulation::plan::one_three_rectangle::OneThreeRectangle;
+    use simulation::settings::Settings;
+    use simulation::demand::Request;
+    use simulation::plan::Vertex;
+    use fnv::FnvHashMap;
+    use algorithm::path::greedy_shortest_paths::Path;
+    use algorithm::path::greedy_shortest_paths::GreedyShortestPaths;
 
     #[test]
     fn test_calculate_paths_single_3_3() {
         let plan = OneThreeRectangle::new(3, 3);
         let settings = Settings {
             total_time: 10,
-            maximum_robots: 1,
+            nr_robots: 1,
             nr_requests: 1,
-            real_time: false,
             output_file: None,
         };
         let mut requests = FnvHashMap::default();
@@ -223,9 +228,9 @@ mod test {
                 to: terminal,
             },
         );
-        let mut assignment_algorithm = Box::new(GreedyMakespan::instantiate(&plan, &settings));
+        let mut assignment_algorithm = Box::new(GreedyMakespan::new(&plan, &settings));
         let mut algorithm =
-            GreedyShortestPaths::instantiate(&plan, &settings, assignment_algorithm);
+            GreedyShortestPaths::new(&plan, &settings, assignment_algorithm);
         algorithm.update_assignment(&requests);
         algorithm.update_paths(&requests);
         assert_eq!(
@@ -245,11 +250,11 @@ mod test {
         let plan = OneThreeRectangle::new(5, 5);
         let settings = Settings {
             total_time: 10,
-            maximum_robots: 1,
+            nr_robots: 1,
             nr_requests: 1,
             output_file: None,
         };
-        let mut assignment_algorithm = Box::new(GreedyMakespan::instantiate(&plan, &settings));
+        let mut assignment_algorithm = Box::new(GreedyMakespan::new(&plan, &settings));
         let mut algorithm =
             GreedyShortestPaths::instantiate(&plan, &settings, assignment_algorithm);
         let mut requests = FnvHashMap::default();
@@ -292,11 +297,11 @@ mod test {
         );
         let settings = Settings {
             total_time: 10,
-            maximum_robots: 2,
+            nr_robots: 2,
             nr_requests: requests.len() as u64,
             output_file: None,
         };
-        let mut assignment_algorithm = Box::new(GreedyMakespan::instantiate(&plan, &settings));
+        let mut assignment_algorithm = Box::new(GreedyMakespan::new(&plan, &settings));
         let mut algorithm =
             GreedyShortestPaths::instantiate(&plan, &settings, assignment_algorithm);
 
@@ -338,11 +343,11 @@ mod test {
         );
         let settings = Settings {
             total_time: 10,
-            maximum_robots: 2,
+            nr_robots: 2,
             nr_requests: requests.len() as u64,
             output_file: None,
         };
-        let mut assignment_algorithm = Box::new(GreedyMakespan::instantiate(&plan, &settings));
+        let mut assignment_algorithm = Box::new(GreedyMakespan::new(&plan, &settings));
         let mut algorithm =
             GreedyShortestPaths::instantiate(&plan, &settings, assignment_algorithm);
 
