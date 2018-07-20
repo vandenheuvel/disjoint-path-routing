@@ -34,7 +34,7 @@ pub struct ILPSteps<'p, 's, 'a> {
 
     steps_at_once: u64,
 
-    assignment: Vec<Vec<usize>>,
+    pub assignment: Vec<Vec<usize>>,
     assignment_initialized: bool,
 }
 
@@ -325,7 +325,7 @@ impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for ILPSteps<'p, 's, 'a> {
                 .assignment_algorithm
                 .calculate_assignment(requests, &availability);
             self.assignment_initialized = true;
-            println!("{:?}", self.assignment);
+//            println!("{:?}", self.assignment);
         }
 
         let (locations, edges, costs) = self.calculate_parameters(history.last_state());
@@ -335,7 +335,9 @@ impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for ILPSteps<'p, 's, 'a> {
         }
         create_dir(working_directory);
         let vertex_map = self.write_data_file(data_path.as_path(), locations, edges, costs);
-
+//        for (id, vertex) in vertex_map.iter() {
+//            println!("{}, {:?}", id, vertex);
+//        }
         ILPSteps::write_run_file(
             run_file_path.as_path(),
             model_path.as_path(),

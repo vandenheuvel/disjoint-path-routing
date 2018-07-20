@@ -31,7 +31,7 @@ pub struct Simulation<'a, 'p, 's> {
     demand: Box<Demand + 'a>,
     settings: &'s Settings,
 
-    history: History,
+    pub history: History,
     output_writer: Option<BufWriter<File>>,
 }
 
@@ -106,8 +106,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         while self.history.last_state().requests.len() > 0
             && self.history.time() < self.settings.total_time
         {
-            println!("{:?}", self.history.last_state());
-            println!("{}", self.history.time());
+//            println!("{:?}", self.history.last_state());
+//            println!("{}", self.history.time());
             let instructions = self.algorithm.next_step(&self.history);
             self.new_state(instructions)?;
             if let Some(ref mut writer) = self.output_writer {

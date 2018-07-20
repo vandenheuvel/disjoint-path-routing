@@ -17,6 +17,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use algorithm::assignment::greedy_makespan::GreedyMakespan;
 
 const MOD_FILE_PATH: &str = "/home/bram/git/disjoint-path-routing/src/algorithm/assignment/multiple_vehicle_ilp/multiple_vehicle_ilp.mod";
 const WORKING_DIRECTORY: &str = "multiple_vehicle_ilp";
@@ -89,6 +90,7 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
         start_costs: Vec<(usize, usize, u64)>,
         transition_costs: Vec<(usize, usize, u64)>,
         end_costs: Vec<(usize, usize, u64)>,
+        initial_solution: Vec<Vec<usize>>,
     ) -> Result<(), LPIOError> {
         let mut file = File::create(path).unwrap();
 
@@ -128,6 +130,27 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
         }
         file.write(";\n".as_ref());
 
+
+        writeln!(file, "var First_Request :=");
+        for (robot, requests) in initial_solution.iter().enumerate() {
+            writeln!(file, "{} {} {}", robot, requests[0], 1);
+        }
+        writeln!(file, ";");
+
+        writeln!(file, "var Transition :=");
+        for (robot, requests) in initial_solution.iter().enumerate() {
+            for i in 0..(requests.len() - 1) {
+                writeln!(file, "{} {} {} {}", robot, requests[i], requests[i + 1], 1);
+            }
+        }
+        writeln!(file, ";");
+
+        writeln!(file, "var Last_Request :=");
+        for (robot, requests) in initial_solution.iter().enumerate() {
+            writeln!(file, "{} {} {} {}", robot, robot, requests.last().unwrap(), 1);
+        }
+        writeln!(file, ";");
+
         Ok(())
     }
     fn write_run_file<T>(path: T, model_path: T, data_path: T, time_limit: f64)
@@ -143,7 +166,7 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
         writeln!(
             file,
             "option gurobi_options 'timelim {} bestbound 1';",
-            20
+            30
         );
         file.write("solve;\n".as_ref());
         file.write("option omit_zero_rows 1;\n".as_ref());
@@ -329,6 +352,8 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
         let start_costs = MultiVehicleIlpFormulation::calculate_start_costs(availability, requests);
         let transition_costs = MultiVehicleIlpFormulation::calculate_transition_costs(requests);
         let end_costs = MultiVehicleIlpFormulation::calculate_end_costs(availability, requests);
+        let mut pre_algorithm = GreedyMakespan::new(self.plan, self.settings);
+        let initial_assignment = pre_algorithm.calculate_assignment(requests, availability);
         MultiVehicleIlpFormulation::write_data_file(
             data_path.as_path(),
             availability,
@@ -336,6 +361,7 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
             start_costs,
             transition_costs,
             end_costs,
+            initial_assignment,
         );
         MultiVehicleIlpFormulation::write_run_file(
             run_path.as_path(),
@@ -371,6 +397,11 @@ impl<'p, 's> AssignmentAlgorithm<'p, 's> for MultiVehicleIlpFormulation<'p, 's> 
         let start_costs = MultiVehicleIlpFormulation::calculate_start_costs(availability, requests);
         let transition_costs = MultiVehicleIlpFormulation::calculate_transition_costs(requests);
         let end_costs = MultiVehicleIlpFormulation::calculate_end_costs(availability, requests);
+        let mut pre_algorithm = GreedyMakespan::new(self.plan, self.settings);
+        let initial_assignment = pre_algorithm.calculate_assignment(requests, availability);
+        if transition_costs.len() * availability.len() > 10_000_000 {
+            panic!()
+        }
         MultiVehicleIlpFormulation::write_data_file(
             data_path.as_path(),
             availability,
@@ -378,6 +409,7 @@ impl<'p, 's> AssignmentAlgorithm<'p, 's> for MultiVehicleIlpFormulation<'p, 's> 
             start_costs,
             transition_costs,
             end_costs,
+            initial_assignment,
         );
         MultiVehicleIlpFormulation::write_run_file(
             run_path.as_path(),

@@ -31,7 +31,7 @@ pub struct MakespanSingleVehicleILP<'p, 's> {
 }
 
 impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
-    fn new(plan: &'p impl Plan, settings: &'s Settings) -> MakespanSingleVehicleILP<'p, 's> {
+    pub fn new(plan: &'p impl Plan, settings: &'s Settings) -> MakespanSingleVehicleILP<'p, 's> {
         MakespanSingleVehicleILP { plan, settings }
     }
     fn calculate_optimal_request_order(
@@ -63,7 +63,7 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
                 .arg(run_path)
                 .output()
                 .unwrap();
-            let (first, transitions, last) =
+            let (first, transitions, last, _) =
                 MakespanSingleVehicleILP::parse_ampl_output(output.stdout);
             MakespanSingleVehicleILP::reconstruct_request_order(first, transitions, last)
         })
@@ -100,11 +100,22 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
 
         requests
     }
-    fn parse_ampl_output(output: Vec<u8>) -> (usize, FnvHashMap<usize, usize>, usize) {
+    fn parse_ampl_output(output: Vec<u8>) -> (usize, FnvHashMap<usize, usize>, usize, u64) {
         let output = String::from_utf8(output).unwrap();
         let segments = output.lines().collect::<Vec<_>>();
-        let mut segments = segments.split(|&line| line == ";");
 
+        let objective = segments
+            .iter()
+            .skip_while(|line| !line.contains("objective"))
+            .next()
+            .unwrap()
+            .split_whitespace()
+            .last()
+            .unwrap()
+            .parse::<u64>()
+            .unwrap();
+
+        let mut segments = segments.split(|&line| line == ";");
         let mut get_lines = |pattern: &str| {
             segments
                 .next()
@@ -145,7 +156,7 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
             .parse::<usize>()
             .unwrap();
 
-        (first, transitions, last)
+        (first, transitions, last, objective)
     }
     fn write_data_file(
         path: impl AsRef<Path>,
@@ -198,6 +209,7 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
         writeln!(file, "model '{}';", model_path.as_ref().to_str().unwrap());
         writeln!(file, "data '{}';", data_path.as_ref().to_str().unwrap());
         file.write("option solver '/home/bram/Downloads/amplide.linux64/gurobi';\n".as_ref());
+        writeln!(file, "option gurobi_options 'timelim {} bestbound 1';", 30);
         file.write("solve;\n".as_ref());
         file.write("option omit_zero_rows 1;\n".as_ref());
         file.write("option display_1col 1000000;\n".as_ref());
@@ -252,6 +264,56 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
         let run_path = working_directory.join(RUN_FILE_NAME);
 
         (model_path, working_directory, dat_path, run_path)
+    }
+    pub fn calculate_assignment_quality(
+        &mut self,
+        requests: &FnvHashMap<usize, Request>,
+        availability: &Vec<(usize, Vertex)>,
+    ) -> u64 {
+        let mut makespan_assignment = GreedyMakespan::new(self.plan, self.settings);
+        let assignment = makespan_assignment.calculate_assignment(requests, availability);
+
+        let handles = assignment
+            .into_iter()
+            .enumerate()
+            .map(|(index, assigned)| {
+                let (robot, start_vertex) = availability[index];
+                let (model_path, working_directory, data_path, run_path) =
+                    MakespanSingleVehicleILP::get_paths(robot);
+                MakespanSingleVehicleILP::create_working_directory(working_directory);
+                let (first_distances, transition_distances, last_distances) =
+                    self.calculate_distances(start_vertex, &assigned, requests);
+                MakespanSingleVehicleILP::write_data_file(
+                    data_path.as_path(),
+                    &assigned,
+                    first_distances,
+                    transition_distances,
+                    last_distances,
+                );
+                MakespanSingleVehicleILP::write_run_file(
+                    run_path.as_path(),
+                    model_path.as_path(),
+                    data_path.as_path(),
+                );
+                (spawn(move || {
+                    let output = Command::new("/home/bram/Downloads/amplide.linux64/ampl")
+                        .arg(run_path)
+                        .output()
+                        .unwrap();
+                    let (_, _, _, obj) =
+                        MakespanSingleVehicleILP::parse_ampl_output(output.stdout);
+                    obj
+                }), assigned
+                    .iter()
+                    .map(|r| requests.get(r).unwrap().distance())
+                    .sum::<u64>())
+            })
+            .collect::<Vec<_>>();
+        handles
+            .into_iter()
+            .map(|(handle, sum)| handle.join().ok().unwrap() + sum)
+            .max()
+            .unwrap()
     }
 }
 

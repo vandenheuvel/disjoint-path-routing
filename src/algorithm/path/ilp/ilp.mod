@@ -20,4 +20,4 @@ subject to Move_To_Empty_Location {t in 0..(T - 1), r in ROBOTS, i in TIMES_ROBO
   Time_Robot_Location[t, r, i] + sum {s in ROBOTS: s <> r && i in TIMES_ROBOTS_LOCATIONS[t + 1, s]} Time_Robot_Location[t + 1, s, i] <= 1;
 
 minimize Total_Cost:
-  sum {r in ROBOTS, t in TIMES} sum {i in TIMES_ROBOTS_LOCATIONS[t, r]} t * cost[r, i] * Time_Robot_Location[T, r, i];
+  sum {r in ROBOTS, t in TIMES} sum {i in TIMES_ROBOTS_LOCATIONS[t, r]} (T - t + 1) * cost[r, i] * Time_Robot_Location[T, r, i];

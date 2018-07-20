@@ -12,6 +12,7 @@ use fnv::FnvHasher;
 
 pub mod middle_terminals;
 pub mod one_three_rectangle;
+pub mod e_plan;
 
 pub trait Plan: Send + Sync {
     fn vertices(&self) -> Vec<Vertex>;

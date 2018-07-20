@@ -5,6 +5,8 @@ use algorithm::path::ilp::ILPSteps;
 use simulation::demand::uniform::Uniform;
 use simulation::demand::Demand;
 use simulation::simulation::Simulation;
+use simulation::plan::e_plan::EPlan;
+use simulation::plan::middle_terminals::MiddleTerminals;
 
 #[test]
 fn multiple_vehicle_ilp_path() {
@@ -31,8 +33,58 @@ fn multiple_vehicle_ilp_path() {
 }
 
 #[test]
-fn greedy_makespan_greedy_shortest_paths() {
+fn multiple_vehicle_ilp_path_large() {
     let plan = OneThreeRectangle::new(30, 30);
+    let settings = Settings {
+        total_time: 500,
+        nr_robots: 5,
+        nr_requests: 10,
+//        output_file: Some("/tmp/disjoint".to_string()),
+        output_file: None,
+    };
+    let assignment_algorithm = Box::new(MultiVehicleIlpFormulation::new(&plan, &settings));
+    let path_algorithm = Box::new(ILPSteps::new(&plan, &settings, assignment_algorithm, 2));
+    let demand = Box::new(<Uniform as Demand>::create([0; 32]));
+
+    let mut simulation = Simulation::new(path_algorithm, &plan, demand, &settings);
+    simulation.initialize().ok().unwrap();
+    let result = simulation.run();
+
+    let is_ok = result.is_ok();
+    if let Err(error) = result {
+        println!("{:?}: {:?} at time {}", error.message(), error.instruction(), error.time());
+    };
+    assert!(is_ok);
+}
+
+#[test]
+fn e_plan_multiple_vehicle_ilp_path_large() {
+    let plan = EPlan::new(62, 63, 20, 3);
+    let settings = Settings {
+        total_time: 500,
+        nr_robots: 5,
+        nr_requests: 10,
+        output_file: Some("/tmp/disjoint".to_string()),
+//        output_file: None,
+    };
+    let assignment_algorithm = Box::new(MultiVehicleIlpFormulation::new(&plan, &settings));
+    let path_algorithm = Box::new(ILPSteps::new(&plan, &settings, assignment_algorithm, 2));
+    let demand = Box::new(<Uniform as Demand>::create([0; 32]));
+
+    let mut simulation = Simulation::new(path_algorithm, &plan, demand, &settings);
+    simulation.initialize().ok().unwrap();
+    let result = simulation.run();
+
+    let is_ok = result.is_ok();
+    if let Err(error) = result {
+        println!("{:?}: {:?} at time {}", error.message(), error.instruction(), error.time());
+    };
+    assert!(is_ok);
+}
+
+#[test]
+fn e_plan_muxlp_path_large() {
+    let plan = MiddleTerminals::new(10, 10, 3, 3);
     let settings = Settings {
         total_time: 500,
         nr_robots: 5,
