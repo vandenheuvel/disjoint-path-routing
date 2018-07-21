@@ -4,10 +4,9 @@ use priority_queue::PriorityQueue;
 use simulation::plan::Plan;
 use simulation::plan::Vertex;
 use std::cmp::Reverse;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::iter::repeat;
+use fnv::FnvHashMap;
 
 pub struct TimeGraph<'a> {
     plan: &'a Plan,
@@ -41,12 +40,12 @@ impl<'a> TimeGraph<'a> {
             return None;
         }
 
-        let mut came_from = HashMap::new();
-        let mut visited = HashSet::new();
+        let mut came_from = FnvHashMap::default();
+        let mut visited = FnvHashSet::default();
         let mut to_visit: PriorityQueue<(usize, Vertex), Reverse<u64>> = PriorityQueue::new();
         to_visit.push((start_index, from), Reverse(from.distance(to)));
 
-        let mut distances: HashMap<TimeVertex, u64> = HashMap::new();
+        let mut distances: FnvHashMap<TimeVertex, u64> = FnvHashMap::default();
         distances.insert((start_index, from), 0);
 
         while let Some((current, _)) = to_visit.pop() {
@@ -79,7 +78,7 @@ impl<'a> TimeGraph<'a> {
         None
     }
     fn reconstruct_path(
-        came_from: HashMap<TimeVertex, TimeVertex>,
+        came_from: FnvHashMap<TimeVertex, TimeVertex>,
         (previous_index, previous_vertex): TimeVertex,
         start_time: usize,
     ) -> Path {
@@ -170,7 +169,7 @@ mod test {
         let (x_size, y_size, total_time, plan) = new();
         let time_graph = TimeGraph::from_plan(&plan, total_time);
 
-        let nr_vertices = time_graph.vertices.iter().map(HashSet::len).sum::<usize>();
+        let nr_vertices = time_graph.vertices.iter().map(FnvHashSet::len).sum::<usize>();
         assert_eq!(
             nr_vertices as u64,
             x_size * y_size * (total_time as u64 + 1)
@@ -207,9 +206,9 @@ mod test {
              [$(($neighbor_t:expr, $neighbor_x:expr, $neighbor_y:expr)), *]
             ) => {
                 assert_eq!(time_graph.neighbors(Vertex { x: $x, y: $y, }, $t)
-                    .into_iter().collect::<HashSet<_>>(),
+                    .into_iter().collect::<FnvHashSet<_>>(),
                     vec![$(($neighbor_t, Vertex { x: $neighbor_x, y: $neighbor_y, })), *]
-                    .into_iter().collect::<HashSet<_>>());
+                    .into_iter().collect::<FnvHashSet<_>>());
             }
         }
 
@@ -233,7 +232,7 @@ mod test {
 
     #[test]
     fn test_reconstruct_path() {
-        let mut came_before = HashMap::new();
+        let mut came_before = FnvHashMap::default();
         let end = Vertex { x: 3, y: 4 };
         let start = Vertex { x: 2, y: 2 };
         came_before.insert((4, end), (3, Vertex { x: 3, y: 3 }));

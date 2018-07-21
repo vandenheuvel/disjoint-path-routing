@@ -3,7 +3,7 @@ use fnv::FnvHashSet;
 use simulation::state::History;
 use simulation::Instructions;
 
-//pub mod greedy_shortest_paths;
+pub mod greedy_shortest_paths;
 pub mod ilp;
 
 pub trait PathAlgorithm<'p, 's, 'a> {

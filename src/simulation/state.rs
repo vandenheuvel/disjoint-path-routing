@@ -40,7 +40,7 @@ impl State {
 pub struct RobotState {
     pub robot_id: usize,
     pub parcel_id: Option<usize>,
-    pub vertex: Vertex,
+    pub vertex: Option<Vertex>,
 }
 
 #[derive(Debug, PartialEq)]

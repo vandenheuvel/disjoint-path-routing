@@ -11,6 +11,7 @@ pub struct Instructions {
     pub movements: Vec<MoveInstruction>,
     pub placements: Vec<PlacementInstruction>,
     pub removals: Vec<RemovalInstruction>,
+    pub robot_removeals: Vec<RobotRemovalInstruction>,
 }
 #[derive(Debug)]
 pub enum Instruction {
@@ -32,6 +33,7 @@ pub struct ParcelInstruction {
 }
 pub type PlacementInstruction = ParcelInstruction;
 pub type RemovalInstruction = ParcelInstruction;
+pub type RobotRemovalInstruction = MoveInstruction;
 
 pub trait IllegalInstructionError {
     fn instruction(&self) -> Instruction;

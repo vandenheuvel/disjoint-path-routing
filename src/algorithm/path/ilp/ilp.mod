@@ -5,7 +5,7 @@ set ROBOTS;
 set LOCATIONS;
 set EDGES within LOCATIONS cross LOCATIONS;
 
-set TIMES_ROBOTS_LOCATIONS {TIMES cross LOCATIONS} within LOCATIONS;
+set TIMES_ROBOTS_LOCATIONS {TIMES cross ROBOTS} within LOCATIONS;
 param cost {r in ROBOTS, TIMES_ROBOTS_LOCATIONS[T, r]};
 
 var Time_Robot_Location {(t, r) in TIMES cross ROBOTS, TIMES_ROBOTS_LOCATIONS[t, r]} binary;

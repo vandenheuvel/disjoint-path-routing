@@ -24,6 +24,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io;
 use std::io::BufWriter;
+use simulation::RobotRemovalInstruction;
 
 pub struct Simulation<'a, 'p, 's> {
     algorithm: Box<PathAlgorithm<'p, 's, 'a> + 'a>,
@@ -106,8 +107,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         while self.history.last_state().requests.len() > 0
             && self.history.time() < self.settings.total_time
         {
-//            println!("{:?}", self.history.last_state());
-//            println!("{}", self.history.time());
+            println!("{:?}", self.history.last_state());
+            println!("{}", self.history.time());
             let instructions = self.algorithm.next_step(&self.history);
             self.new_state(instructions)?;
             if let Some(ref mut writer) = self.output_writer {
@@ -152,6 +153,10 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             &mut new_requests,
             &mut newly_used_vertices,
         ).map_err(|e| Box::new(e) as Box<IllegalInstructionError>)?;
+        self.process_robot_removal_instructions(
+            instructions.robot_removeals,
+            &mut new_states,
+        ).map_err(|e| Box::new(e) as Box<IllegalInstructionError>)?;
 
         Ok(self.history.states.push(State {
             robot_states: new_states,
@@ -193,24 +198,24 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     ) -> Option<IllegalMoveError> {
         let MoveInstruction { robot_id, vertex } = instruction;
 
-        match used_vertices.get(&vertex) {
-            None => (),
-            Some(robot) if *robot != instruction.robot_id => {
-                return Some(IllegalMoveError::from(
-                    instruction,
-                    "State used in previous time step by other robot".to_string(),
-                    self.history.time(),
-                ));
-            }
-            _ => (),
-        }
-        if newly_used_vertices.contains(&vertex) {
-            return Some(IllegalMoveError::from(
-                instruction,
-                "State will be used in next time step".to_string(),
-                self.history.time(),
-            ));
-        }
+//        match used_vertices.get(&vertex) {
+//            None => (),
+//            Some(robot) if *robot != instruction.robot_id => {
+//                return Some(IllegalMoveError::from(
+//                    instruction,
+//                    "State used in previous time step by other robot".to_string(),
+//                    self.history.time(),
+//                ));
+//            }
+//            _ => (),
+//        }
+//        if newly_used_vertices.contains(&vertex) {
+//            return Some(IllegalMoveError::from(
+//                instruction,
+//                "State will be used in next time step".to_string(),
+//                self.history.time(),
+//            ));
+//        }
         if self
             .history
             .last_robot_state(robot_id)
@@ -379,6 +384,15 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         }
 
         None
+    }
+    fn process_robot_removal_instructions(
+        &self,
+        instructions: Vec<RobotRemovalInstruction>,
+        new_states: &mut Vec<RobotState>,
+        ) {
+        for MoveInstruction{ robot_id, vertex, } in instructions {
+            new_states[robot_id].vertex = None;
+        }
     }
 }
 //
