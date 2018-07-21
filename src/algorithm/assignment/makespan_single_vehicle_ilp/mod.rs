@@ -295,18 +295,21 @@ impl<'p, 's> MakespanSingleVehicleILP<'p, 's> {
                     model_path.as_path(),
                     data_path.as_path(),
                 );
-                (spawn(move || {
-                    let output = Command::new("/home/bram/Downloads/amplide.linux64/ampl")
-                        .arg(run_path)
-                        .output()
-                        .unwrap();
-                    let (_, _, _, obj) =
-                        MakespanSingleVehicleILP::parse_ampl_output(output.stdout);
-                    obj
-                }), assigned
-                    .iter()
-                    .map(|r| requests.get(r).unwrap().distance())
-                    .sum::<u64>())
+                (
+                    spawn(move || {
+                        let output = Command::new("/home/bram/Downloads/amplide.linux64/ampl")
+                            .arg(run_path)
+                            .output()
+                            .unwrap();
+                        let (_, _, _, obj) =
+                            MakespanSingleVehicleILP::parse_ampl_output(output.stdout);
+                        obj
+                    }),
+                    assigned
+                        .iter()
+                        .map(|r| requests.get(r).unwrap().distance())
+                        .sum::<u64>(),
+                )
             })
             .collect::<Vec<_>>();
         handles

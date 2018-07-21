@@ -20,11 +20,11 @@ use simulation::MoveInstruction;
 use simulation::ParcelInstruction;
 use simulation::PlacementInstruction;
 use simulation::RemovalInstruction;
+use simulation::RobotRemovalInstruction;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io;
 use std::io::BufWriter;
-use simulation::RobotRemovalInstruction;
 
 pub struct Simulation<'a, 'p, 's> {
     algorithm: Box<PathAlgorithm<'p, 's, 'a> + 'a>,
@@ -86,7 +86,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             .enumerate()
             .map(|(robot_id, vertex)| RobotState {
                 robot_id,
-                vertex,
+                vertex: Some(vertex),
                 parcel_id: None,
             })
             .collect();
@@ -127,7 +127,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             .last_state()
             .robot_states
             .iter()
-            .map(|robot| (robot.vertex, robot.robot_id))
+            .map(|robot| (robot.vertex.unwrap(), robot.robot_id))
             .collect::<FnvHashMap<_, _>>();
         let mut newly_used_vertices = FnvHashSet::default();
 
@@ -153,10 +153,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             &mut new_requests,
             &mut newly_used_vertices,
         ).map_err(|e| Box::new(e) as Box<IllegalInstructionError>)?;
-        self.process_robot_removal_instructions(
-            instructions.robot_removeals,
-            &mut new_states,
-        ).map_err(|e| Box::new(e) as Box<IllegalInstructionError>)?;
+        self.process_robot_removal_instructions(instructions.robot_removals, &mut new_states);
 
         Ok(self.history.states.push(State {
             robot_states: new_states,
@@ -171,6 +168,15 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         newly_used_vertices: &mut FnvHashSet<Vertex>,
     ) -> Result<(), IllegalMoveError> {
         for instruction in move_instructions {
+            if self
+                .history
+                .last_robot_state(instruction.robot_id)
+                .vertex
+                .is_none()
+            {
+                continue;
+            }
+
             if let Some(error) = self.check_for_move_instruction_error(
                 instruction,
                 used_vertices,
@@ -183,7 +189,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             new_states[robot_id] = RobotState {
                 robot_id,
                 parcel_id: self.history.last_robot_state(robot_id).parcel_id,
-                vertex,
+                vertex: Some(vertex),
             };
             newly_used_vertices.insert(vertex);
         }
@@ -198,28 +204,29 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
     ) -> Option<IllegalMoveError> {
         let MoveInstruction { robot_id, vertex } = instruction;
 
-//        match used_vertices.get(&vertex) {
-//            None => (),
-//            Some(robot) if *robot != instruction.robot_id => {
-//                return Some(IllegalMoveError::from(
-//                    instruction,
-//                    "State used in previous time step by other robot".to_string(),
-//                    self.history.time(),
-//                ));
-//            }
-//            _ => (),
-//        }
-//        if newly_used_vertices.contains(&vertex) {
-//            return Some(IllegalMoveError::from(
-//                instruction,
-//                "State will be used in next time step".to_string(),
-//                self.history.time(),
-//            ));
-//        }
+        //        match used_vertices.get(&vertex) {
+        //            None => (),
+        //            Some(robot) if *robot != instruction.robot_id => {
+        //                return Some(IllegalMoveError::from(
+        //                    instruction,
+        //                    "State used in previous time step by other robot".to_string(),
+        //                    self.history.time(),
+        //                ));
+        //            }
+        //            _ => (),
+        //        }
+        //        if newly_used_vertices.contains(&vertex) {
+        //            return Some(IllegalMoveError::from(
+        //                instruction,
+        //                "State will be used in next time step".to_string(),
+        //                self.history.time(),
+        //            ));
+        //        }
         if self
             .history
             .last_robot_state(robot_id)
             .vertex
+            .unwrap()
             .distance(vertex) > 1
         {
             return Some(IllegalMoveError {
@@ -240,6 +247,14 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         new_requests: &mut FnvHashMap<usize, Request>,
     ) -> Result<(), IllegalPlacementError> {
         for instruction in placement_instructions {
+            if self
+                .history
+                .last_robot_state(instruction.robot_id)
+                .vertex
+                .is_none()
+            {
+                continue;
+            }
             if let Some(error) = self.check_for_placement_instruction_error(
                 instruction,
                 used_vertices,
@@ -257,7 +272,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             new_states[robot_id] = RobotState {
                 robot_id,
                 parcel_id: Some(parcel),
-                vertex,
+                vertex: Some(vertex),
             };
 
             newly_used_vertices.insert(vertex);
@@ -292,7 +307,7 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
                 self.history.time(),
             ));
         }
-        if self.history.last_robot_state(robot_id).vertex != vertex {
+        if self.history.last_robot_state(robot_id).vertex.unwrap() != vertex {
             return Some(IllegalPlacementError::from(
                 instruction,
                 "Robot is not at this location".to_string(),
@@ -317,6 +332,14 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         used_vertices: &mut FnvHashSet<Vertex>,
     ) -> Result<(), IllegalRemovalError> {
         for instruction in removal_instructions {
+            if self
+                .history
+                .last_robot_state(instruction.robot_id)
+                .vertex
+                .is_none()
+            {
+                continue;
+            }
             if let Some(error) = self.check_for_removal_instruction_error(instruction) {
                 return Err(error);
             }
@@ -329,11 +352,11 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             new_states[robot_id] = RobotState {
                 robot_id,
                 parcel_id: None,
-                vertex,
+                vertex: Some(vertex),
             };
             new_requests.remove(&parcel);
 
-            used_vertices.insert(self.history.last_robot_state(robot_id).vertex);
+            used_vertices.insert(self.history.last_robot_state(robot_id).vertex.unwrap());
         }
 
         Ok(())
@@ -353,7 +376,12 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
             ));
         }
 
-        if self.history.last_robot_state(instruction.robot_id).vertex != instruction.vertex {
+        if self
+            .history
+            .last_robot_state(instruction.robot_id)
+            .vertex
+            .unwrap() != instruction.vertex
+        {
             return Some(IllegalRemovalError::from(
                 instruction,
                 "Robot is not at this location".to_string(),
@@ -389,8 +417,8 @@ impl<'a, 'p, 's> Simulation<'a, 'p, 's> {
         &self,
         instructions: Vec<RobotRemovalInstruction>,
         new_states: &mut Vec<RobotState>,
-        ) {
-        for MoveInstruction{ robot_id, vertex, } in instructions {
+    ) {
+        for MoveInstruction { robot_id, vertex } in instructions {
             new_states[robot_id].vertex = None;
         }
     }

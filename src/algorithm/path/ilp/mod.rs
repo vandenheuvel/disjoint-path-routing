@@ -79,7 +79,7 @@ impl<'p, 's, 'a> ILPSteps<'p, 's, 'a> {
                 (0..(self.steps_at_once) + 1)
                     .map(|time| {
                         self.plan
-                            .neighborhood(state.robot_states[robot].vertex, time)
+                            .neighborhood(state.robot_states[robot].vertex.unwrap(), time)
                     })
                     .collect::<Vec<_>>()
             })
@@ -136,7 +136,7 @@ impl<'p, 's, 'a> ILPSteps<'p, 's, 'a> {
         writeln!(file, ";");
 
         writeln!(file, "set EDGES :=");
-        for UndirectedEdge { first, second, } in edges {
+        for UndirectedEdge { first, second } in edges {
             if vertex_to_usize.contains_key(&first) && vertex_to_usize.contains_key(&second) {
                 let v1 = vertex_to_usize.get(&first).unwrap();
                 let v2 = vertex_to_usize.get(&second).unwrap();
@@ -256,11 +256,12 @@ impl<'p, 's, 'a> ILPSteps<'p, 's, 'a> {
             movements: Vec::new(),
             placements: Vec::new(),
             removals: Vec::new(),
+            robot_removals: Vec::new(),
         };
 
         for (robot_id, new_location) in new_locations.into_iter().enumerate() {
             let previous_state = history.last_robot_state(robot_id);
-            let previous_location = previous_state.vertex;
+            let previous_location = previous_state.vertex.unwrap();
             if let Some(parcel) = previous_state.parcel_id {
                 let goal_location = history.last_state().requests.get(&parcel).unwrap().to;
                 if previous_location == goal_location {
@@ -319,13 +320,13 @@ impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for ILPSteps<'p, 's, 'a> {
                 .last_state()
                 .robot_states
                 .iter()
-                .map(|state| (0, state.vertex))
+                .map(|state| (0, state.vertex.unwrap()))
                 .collect::<Vec<_>>();
             self.assignment = self
                 .assignment_algorithm
                 .calculate_assignment(requests, &availability);
             self.assignment_initialized = true;
-//            println!("{:?}", self.assignment);
+            //            println!("{:?}", self.assignment);
         }
 
         let (locations, edges, costs) = self.calculate_parameters(history.last_state());
@@ -335,9 +336,9 @@ impl<'p, 's, 'a> PathAlgorithm<'p, 's, 'a> for ILPSteps<'p, 's, 'a> {
         }
         create_dir(working_directory);
         let vertex_map = self.write_data_file(data_path.as_path(), locations, edges, costs);
-//        for (id, vertex) in vertex_map.iter() {
-//            println!("{}, {:?}", id, vertex);
-//        }
+        //        for (id, vertex) in vertex_map.iter() {
+        //            println!("{}, {:?}", id, vertex);
+        //        }
         ILPSteps::write_run_file(
             run_file_path.as_path(),
             model_path.as_path(),
@@ -361,6 +362,7 @@ mod test {
     use fnv::FnvHashMap;
 
     use algorithm::assignment::greedy_makespan::GreedyMakespan;
+    use algorithm::assignment::multiple_vehicle_ilp::MultiVehicleIlpFormulation;
     use algorithm::path::ilp::ILPSteps;
     use algorithm::path::PathAlgorithm;
     use simulation::demand::Request;
@@ -371,7 +373,6 @@ mod test {
     use simulation::state::RobotState;
     use simulation::state::State;
     use simulation::MoveInstruction;
-    use algorithm::assignment::multiple_vehicle_ilp::MultiVehicleIlpFormulation;
 
     #[test]
     fn test_have_parcel() {
@@ -397,7 +398,7 @@ mod test {
                 robot_states: vec![RobotState {
                     robot_id: 0,
                     parcel_id: Some(0),
-                    vertex: Vertex { x: 2, y: 0 },
+                    vertex: Some(Vertex { x: 2, y: 0 }),
                 }],
                 requests,
             }],
@@ -437,7 +438,7 @@ mod test {
                 robot_states: vec![RobotState {
                     robot_id: 0,
                     parcel_id: None,
-                    vertex: Vertex { x: 2, y: 0 },
+                    vertex: Some(Vertex { x: 2, y: 0 }),
                 }],
                 requests,
             }],
@@ -482,12 +483,12 @@ mod test {
                     RobotState {
                         robot_id: 0,
                         parcel_id: None,
-                        vertex: Vertex { x: 1, y: 0 },
+                        vertex: Some(Vertex { x: 1, y: 0 }),
                     },
                     RobotState {
                         robot_id: 1,
                         parcel_id: None,
-                        vertex: Vertex { x: 4, y: 2 },
+                        vertex: Some(Vertex { x: 4, y: 2 }),
                     },
                 ],
                 requests,

@@ -1,6 +1,7 @@
 use fnv::FnvHashMap;
 use itertools::Itertools;
 
+use algorithm::assignment::greedy_makespan::GreedyMakespan;
 use algorithm::assignment::AssignmentAlgorithm;
 use algorithm::assignment::LPIOError;
 use algorithm::DAT_FILE_NAME;
@@ -17,7 +18,6 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use algorithm::assignment::greedy_makespan::GreedyMakespan;
 
 const MOD_FILE_PATH: &str = "/home/bram/git/disjoint-path-routing/src/algorithm/assignment/multiple_vehicle_ilp/multiple_vehicle_ilp.mod";
 const WORKING_DIRECTORY: &str = "multiple_vehicle_ilp";
@@ -130,7 +130,6 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
         }
         file.write(";\n".as_ref());
 
-
         writeln!(file, "var First_Request :=");
         for (robot, requests) in initial_solution.iter().enumerate() {
             writeln!(file, "{} {} {}", robot, requests[0], 1);
@@ -147,7 +146,14 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
 
         writeln!(file, "var Last_Request :=");
         for (robot, requests) in initial_solution.iter().enumerate() {
-            writeln!(file, "{} {} {} {}", robot, robot, requests.last().unwrap(), 1);
+            writeln!(
+                file,
+                "{} {} {} {}",
+                robot,
+                robot,
+                requests.last().unwrap(),
+                1
+            );
         }
         writeln!(file, ";");
 
@@ -163,11 +169,7 @@ impl<'p, 's> MultiVehicleIlpFormulation<'p, 's> {
         writeln!(file, "data '{}';", data_path.as_ref().to_str().unwrap());
         file.write("option solver '/home/bram/Downloads/amplide.linux64/gurobi';\n".as_ref());
         file.write("option show_stats 0;\n".as_ref());
-        writeln!(
-            file,
-            "option gurobi_options 'timelim {} bestbound 1';",
-            30
-        );
+        writeln!(file, "option gurobi_options 'timelim {} bestbound 1';", 30);
         file.write("solve;\n".as_ref());
         file.write("option omit_zero_rows 1;\n".as_ref());
         file.write("option display_1col 1000000;\n".as_ref());

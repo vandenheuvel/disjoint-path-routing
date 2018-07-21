@@ -11,7 +11,7 @@ pub struct Instructions {
     pub movements: Vec<MoveInstruction>,
     pub placements: Vec<PlacementInstruction>,
     pub removals: Vec<RemovalInstruction>,
-    pub robot_removeals: Vec<RobotRemovalInstruction>,
+    pub robot_removals: Vec<RobotRemovalInstruction>,
 }
 #[derive(Debug)]
 pub enum Instruction {

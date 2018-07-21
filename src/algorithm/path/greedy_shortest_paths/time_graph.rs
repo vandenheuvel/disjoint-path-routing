@@ -1,4 +1,5 @@
 use algorithm::path::greedy_shortest_paths::Path;
+use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 use priority_queue::PriorityQueue;
 use simulation::plan::Plan;
@@ -6,7 +7,6 @@ use simulation::plan::Vertex;
 use std::cmp::Reverse;
 use std::collections::VecDeque;
 use std::iter::repeat;
-use fnv::FnvHashMap;
 
 pub struct TimeGraph<'a> {
     plan: &'a Plan,
@@ -169,7 +169,11 @@ mod test {
         let (x_size, y_size, total_time, plan) = new();
         let time_graph = TimeGraph::from_plan(&plan, total_time);
 
-        let nr_vertices = time_graph.vertices.iter().map(FnvHashSet::len).sum::<usize>();
+        let nr_vertices = time_graph
+            .vertices
+            .iter()
+            .map(FnvHashSet::len)
+            .sum::<usize>();
         assert_eq!(
             nr_vertices as u64,
             x_size * y_size * (total_time as u64 + 1)

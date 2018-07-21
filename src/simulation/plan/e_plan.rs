@@ -10,8 +10,16 @@ pub struct EPlan {
 }
 
 impl EPlan {
-    pub fn new(x_size: u64, y_size: u64, vertical_piece_width: u64, horizontal_piece_height: u64) -> EPlan {
-        assert_eq!((y_size - horizontal_piece_height) % (horizontal_piece_height + 2), 0);
+    pub fn new(
+        x_size: u64,
+        y_size: u64,
+        vertical_piece_width: u64,
+        horizontal_piece_height: u64,
+    ) -> EPlan {
+        assert_eq!(
+            (y_size - horizontal_piece_height) % (horizontal_piece_height + 2),
+            0
+        );
 
         EPlan {
             x_size,
@@ -45,30 +53,34 @@ impl Plan for EPlan {
 
     fn contains(&self, &Vertex { x, y }: &Vertex) -> bool {
         if x < self.x_size && y < self.y_size {
-            if x < self.vertical_piece_width { true } else {
+            if x < self.vertical_piece_width {
+                true
+            } else {
                 if y < self.nr_gaps() * (self.horizontal_piece_height + 2) {
                     y % (self.horizontal_piece_height + 2) < 3
-                } else { true }
+                } else {
+                    true
+                }
             }
-        } else { false }
+        } else {
+            false
+        }
     }
 
     fn sources(&self) -> Vec<Vertex> {
-        (0..self.y_size)
-            .map(|y| Vertex { x: 0, y, })
-            .collect()
+        (0..self.y_size).map(|y| Vertex { x: 0, y }).collect()
     }
 
     fn terminals(&self) -> Vec<Vertex> {
         let mut below = (self.vertical_piece_width..self.x_size)
-            .map(|x| Vertex { x, y: 0, })
+            .map(|x| Vertex { x, y: 0 })
             .collect::<Vec<_>>();
 
         let mut middle_tops = Vec::new();
         for i in 0..(self.nr_gaps() - 1) {
             let y = self.horizontal_piece_height - 1 + i * (self.horizontal_piece_height + 2);
             let mut row = (self.vertical_piece_width..self.x_size)
-                .map(|x| Vertex { x, y, })
+                .map(|x| Vertex { x, y })
                 .collect::<Vec<_>>();
             middle_tops.append(&mut row);
         }
@@ -76,18 +88,20 @@ impl Plan for EPlan {
         for i in 1..self.nr_gaps() {
             let y = i * (self.horizontal_piece_height + 2);
             let mut row = (self.vertical_piece_width..self.x_size)
-                .map(|x| Vertex { x, y, })
+                .map(|x| Vertex { x, y })
                 .collect::<Vec<_>>();
             middle_bottoms.append(&mut row);
         }
 
         let mut top = (self.vertical_piece_width..self.x_size)
-            .map(|x| Vertex { x, y: self.y_size - 1, })
+            .map(|x| Vertex {
+                x,
+                y: self.y_size - 1,
+            })
             .collect::<Vec<_>>();
 
-        let mut vertices = Vec::with_capacity(
-            below.len() + middle_tops.len() + middle_bottoms.len() + top.len()
-        );
+        let mut vertices =
+            Vec::with_capacity(below.len() + middle_tops.len() + middle_bottoms.len() + top.len());
         vertices.append(&mut below);
         vertices.append(&mut middle_tops);
         vertices.append(&mut middle_bottoms);

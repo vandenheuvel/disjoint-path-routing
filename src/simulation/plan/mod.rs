@@ -4,15 +4,15 @@ use std::io::BufWriter;
 use std::io::Write;
 
 use fnv::FnvHashSet;
+use fnv::FnvHasher;
 use itertools::Itertools;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::num::Wrapping;
-use fnv::FnvHasher;
 
+pub mod e_plan;
 pub mod middle_terminals;
 pub mod one_three_rectangle;
-pub mod e_plan;
 
 pub trait Plan: Send + Sync {
     fn vertices(&self) -> Vec<Vertex>;
